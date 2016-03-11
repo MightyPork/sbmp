@@ -1,4 +1,4 @@
-# DBMP session layer
+# SBMP session layer
 
 <i>
 Simple Binary Messaging Protocol specification <br>
