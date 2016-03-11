@@ -30,7 +30,7 @@ communication.
 
 ## Conventions
 
-- The protocol uses little-endian encoding for multi-byte numbers (LSB birst)
+- The protocol uses little-endian encoding for multi-byte numbers (LSB first)
 - All bytes have 8 bits.
 
 
