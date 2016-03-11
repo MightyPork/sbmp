@@ -1,12 +1,10 @@
 # SBMP framing layer
 
-The SMBP can use a variety of framing / physical layers.
-
-This document describes a framing layer to be used with USART.
+This document describes a SBMP framing layer to be used with USART-based interfaces.
 
 ## Packet structure
 
-Each message is contained in a binary packet of the following structure:
+Each message is contained in a binary packet (frame) of the following structure:
 
 ```none
 +------------+-----------------+-------------+-----------------+------------------+
