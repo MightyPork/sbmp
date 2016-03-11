@@ -24,12 +24,12 @@ SBMP provides a simple way to build binary API for PC-device or device-device co
 
 ### Physical layer
 
-SBMP is designed for use on USART-based interfaces, such as simple UART or USART (available as 
+SBMP is designed for use on USART-based interfaces, such as simple TTL U(S)ART (available as 
 on-chip peripherals of many embedded controllers), RS232 and similar.
 
 The protocol supports only point-to-point mode, partly due to limitations of the USART interface.
 
-The standard USART mode used is *115200 baud, 8 bits, 1 stop bit, no parity*.
+The standard configuration is *115200 baud, 8 bits, 1 stop bit, no parity*.
 
 ### Packet structure
 
@@ -69,6 +69,7 @@ ID is maintained thorough the session.
 The two parties are identified by a "origin" bit:
 
 ```none
+       * Session ID *
 +------------+--------------+
 | origin bit | ID 0x00-0x7F |
 +------------+--------------+
