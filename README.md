@@ -66,7 +66,9 @@ This makes it easy for the requesting party to identify what request the respons
 In multi-request sessions (such as a bulk data transfer with flow control - "chunking"), the same
 ID is maintained thorough the session.
 
-The two parties are identified by a "origin" bit:
+The two parties are identified by a "origin" bit, which is the highest bit of the session ID.
+
+This ensures the two parties never use the same Session ID at once.
 
 ```none
        * Session ID *
