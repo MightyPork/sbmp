@@ -20,13 +20,16 @@ The standard configuration is *115200 baud, 8 bits, 1 stop bit, no parity*.
 Each message is contained in a binary packet (frame) of the following structure:
 
 ```none
-+------------+----------------+---------+---------------+----------------+
-| Start byte | Payload length | Payload | Checksum type | Checksum       |
-| 0x01       | 2 bytes        |         | 1 byte        | (0 or 4 bytes) |
-+------------+----------------+---------+---------------+----------------+
++------------+----------------+---------------+---------+----------------+
+| Start byte | Payload length | Checksum type | Payload | Checksum       |
+| 0x01       | 2 bytes        | 1 byte        |         | (0 or 4 bytes) |
++------------+----------------+---------------+---------+----------------+
 ```
 
-*If the checksum type is 0, the following checksum field is omitted.*
+The checksum type is specified in advance, so the checksum can be calculated
+"on-the-fly" by the receiver.
+
+*If the checksum type is 0, the checksum field is omitted.*
 
 
 ## Checksum types
