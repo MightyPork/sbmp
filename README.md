@@ -77,5 +77,60 @@ The two parties are identified by a "origin" bit:
 
 #### Origin bit arbitration
 
-Before a party can 
+Before (our) party can start sending messages, it must claim an origin ID.
+
+This is done by sending a data packet with *payload type* `0x00` and *our* desired origin ID
+as the payload.
+
+```none
++-------+------+------+-----------------------+------+
+| start | ID   | PT   | Our origin bit        | stop |
+| 0x01  | 0x00 | 0x00 | (byte) 0x00 or 0x01   | 0x04 |
++-------+------+------+-----------------------+------+
+```
+
+The receiving party replies to this with PT:
+
+- 0x01 (acknowledge)
+- 0x02 (negative acknowledge)
+- 0x03 (conflict)
+
+If the receiving party has acknowledged *our* origin bit, it accepts the opposite bit, 
+and the communication can continue.
+
+If the request was denied, we have to use the opposite bit.
+
+The *conflict* response is issued in case the receiving party has **also** already sent 
+a request and awaits a response.
+
+In this case, both parties wait for a random amount of time (milliseconds) and retry the attempt.
+If a party has accepted an incoming request, it aborts it's wait and the communication can proceed.
+
+**Example 1 - simple**
+
+- A requests origin 1
+- B acknowledges
+- *arbitration done*
+
+This is always the case if node B is slave-only. (i.e. - does not start communication on it's own).
+
+**Example 2 - collision with conflict**
+
+- A requests origin 1
+- B requests origin 1
+- A (or B) replies with code 0x03 - conflict
+- Both parties wait for a random number of milliseconds
+- *next attempt*
+
+**Example 3 - collision without conflict**
+
+- A requests origin 1
+- B requests origin 0
+- A (or B) detect the collision, but since the IDs are different,
+  the request is accepted.
+- *arbitration done*
+
+#### Payload types
+
+TBD
 
