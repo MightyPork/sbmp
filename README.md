@@ -17,7 +17,7 @@ SBMP provides a simple way to build binary API for PC-device or device-device co
 
 - Controlling a USART-enabled module, such as the ESP8266, by external processor
 - Data exchange between two embedded controllers, such as a master controller and a display driver.
-- Simple API for controlling and reading data from an acquisition module (eg. ARM or Arduino based).
+- Simple API for controlling and reading data from an acquisition module (eg. ARM or AVR ["Arduino"] based).
   This allows to build a variety of PC front-ends with a standartised binary interface.
 
 ## Protocol specification
