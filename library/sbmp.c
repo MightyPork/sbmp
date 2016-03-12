@@ -50,7 +50,6 @@ enum SBMP_RxParseState {
 	PCK_STATE_CKSUM,
 };
 
-
 /** Internal state of the SBMP node */
 struct SBMP_State_struct {
 	// for parsing multi-byte values
@@ -104,7 +103,6 @@ SBMP_State *sbmp_init(void(*msg_handler)(uint8_t *, uint16_t), uint16_t buffer_s
 	return state;
 }
 
-
 /** Free all allocated memory */
 void sbmp_destroy(SBMP_State *state)
 {
@@ -116,7 +114,6 @@ void sbmp_destroy(SBMP_State *state)
 
 	free(state);
 }
-
 
 /** Reset the receiver state  */
 static void sbmp_reset(SBMP_State *state)
@@ -130,34 +127,33 @@ static void sbmp_reset(SBMP_State *state)
 	state->parse_state = PCK_STATE_IDLE;
 }
 
-
+/** Update a header XOR */
 static inline
 void hdrxor_update(SBMP_State *state, uint8_t rxbyte)
 {
 	state->hdr_xor ^= rxbyte;
 }
 
-
+/** Check header xor against received value */
 static inline
 bool hdrxor_verify(SBMP_State *state, uint8_t rx_xor)
 {
 	return state->hdr_xor == rx_xor;
 }
 
-
 /** Append a byte to the rx buffer */
-static void append_rx_byte(SBMP_State *state, uint8_t b)
+static inline
+void append_rx_byte(SBMP_State *state, uint8_t b)
 {
 	state->rx_buffer[state->rx_buffer_i++] = b;
 }
 
-
+/** Set n-th byte (0 = LSM) to a value */
 static inline
 void set_byte(uint32_t *acc, uint8_t pos, uint8_t byte)
 {
 	*acc |= (uint32_t)(byte << (pos * 8));
 }
-
 
 /**
  * Call the message handler with a copy of the payload,
@@ -184,7 +180,6 @@ static void rx_done(SBMP_State *state)
 done:
 	sbmp_reset(state);
 }
-
 
 /**
  * @brief Receive a byte
