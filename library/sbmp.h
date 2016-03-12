@@ -19,10 +19,11 @@ typedef enum {
  * Processing code is responsible for freeing the object, including the buffer.
  */
 typedef struct {
-	uint8_t datagram_type;
-	uint16_t datagram_length;
-	uint16_t session_number;
-	uint8_t *datagram;
+	uint8_t *_backing_buffer; /*!< Backing malloc'd buffer. Must be freed when freeing the datagram! */
+	uint8_t *datagram;        /*!< Datagram payload */
+	uint8_t  datagram_type;   /*!< Datagram type ID */
+	uint16_t datagram_length; /*!< Datagram length (bytes) */
+	uint16_t session_number;  /*!< Datagram session number */
 } SBMP_Datagram;
 
 /** Internal SBMP state */
