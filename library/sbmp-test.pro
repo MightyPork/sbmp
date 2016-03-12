@@ -5,16 +5,16 @@ CONFIG -= qt
 
 DEFINES =
 
-INCLUDEPATH = circbuf/circbuf
+INCLUDEPATH =
 
 SOURCES += \
 	main.c \
-    crc32.c \
-    sbmp.c
+	crc32.c \
+	sbmp.c
 
 HEADERS += \
-    crc32.h \
-    sbmp.h
+	crc32.h \
+	sbmp.h
 
 DISTFILES += \
 	Makefile \
