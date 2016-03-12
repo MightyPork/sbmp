@@ -39,7 +39,7 @@ void sbmp_receive(SBMP_State *state, uint8_t rxbyte);
  * @param buffer_size : size of the payload buffer
  * @return pointer to the allocated struct
  */
-SBMP_State *sbmp_init(void (*msg_handler)(uint8_t*, uint16_t), uint16_t buffer_size);
+SBMP_State *sbmp_init(void (*msg_handler)(uint8_t* payload, uint16_t length), uint16_t buffer_size);
 
 /**
  * @brief De-init the SBMP state structure & free all allocated memory

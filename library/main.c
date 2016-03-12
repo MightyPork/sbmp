@@ -6,9 +6,10 @@
 
 #include "sbmp.h"
 
-SBMP_State *sbmp;
+static SBMP_State *sbmp;
 
-void msg_handler(uint8_t *payload, uint16_t length)
+
+static void msg_handler(uint8_t *payload, uint16_t length)
 {
 	printf("Received a payload of length %u\n", length);
 	for (int i = 0; i < length; i++) {
@@ -25,14 +26,10 @@ int main(void)
 
 	const uint8_t packet[] = {
 		0x01,                    // start byte
-
 		32,                      // crc type   CRC32
 		0x05, 0x00,              // length     5
-
 		0x01 ^ 32 ^ 0x05 ^ 0x00, // header XOR
-
 		'A', 'B', 'C', 'D', 'E', // payload    ABCDE
-
 		0xd5, 0x1a, 0xd3, 0x72,  // checksum   72d31ad5
 	};
 
