@@ -2,7 +2,7 @@
 
 <i>
 Simple Binary Messaging Protocol specification <br>
-rev. 1.0, 11 March 2016
+rev. 1.1, 12 March 2016
 </i>
 
 SBMP is designed for use on USART-based interfaces, such as simple TTL U(S)ART
@@ -20,11 +20,17 @@ The standard configuration is *115200 baud, 8 bits, 1 stop bit, no parity*.
 Each message is contained in a binary packet (frame) of the following structure:
 
 ```none
-+------------+---------------+----------------+---------+----------------+
-| Start byte | Checksum type | Payload length | Payload | Checksum       |
-| 0x01       | 1 byte        | 2 bytes        |         | (0 or 4 bytes) |
-+------------+---------------+----------------+---------+----------------+
++-------+---------------+----------------+------------+---------+------------+
+| Start | Checksum type | Payload length | Header XOR | Payload | Checksum   |
+| 0x01  | 1 byte        | 2 bytes        | 1 byte     |         | (0 or 4 B) |
++-------+---------------+----------------+------------+---------+------------+
 ```
+
+The Header XOR field contains XOR of the preceding 4 bytes. It's used to check
+integrity of the header - a simple and cheap parity check.
+
+If the XOR does not match, the receiver can be confident it's not a valid 
+packet, and MUST discard it.
 
 The checksum type is specified in advance, so the checksum can be calculated
 "on-the-fly" by the receiver.
@@ -41,13 +47,13 @@ Currently supported checksum types:
 - 16 - CRC16-IBM, generating polynomial:  x^16 + x^15 + x^2 + 1
 - 32 - CRC32 (ANSI)
 
-**If possible, CRC32 should be used.** 
+**If possible, CRC32 should be used.**
 
 Other types are intended for applications where certain type of CRC is already
 implemented for different purpose, and can be re-used.
 
-If an invalid or unknown checksum type is used, the receiver MUST discard the
-packet. Such condition is treated as a framing error.
+If an unknown checksum type is used, but the header XOR matches, the receiver 
+may choose to accept the packet and ignore the checksum field.
 
 
 ## Shared serial line for SBMP and ASCII debug messages

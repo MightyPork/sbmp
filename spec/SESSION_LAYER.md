@@ -2,7 +2,7 @@
 
 <i>
 Simple Binary Messaging Protocol specification <br>
-rev. 1.0, 11 March 2016
+rev. 1.1, 12 March 2016
 </i>
 
 The messaging protocol uses a simple session system, which allows to perform 
