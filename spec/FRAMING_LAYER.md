@@ -20,40 +20,36 @@ The standard configuration is *115200 baud, 8 bits, 1 stop bit, no parity*.
 Each message is contained in a binary packet (frame) of the following structure:
 
 ```none
-+-------+---------------+----------------+------------+---------+------------+
-| Start | Checksum type | Payload length | Header XOR | Payload | Checksum   |
-| 0x01  | 1 byte        | 2 bytes        | 1 byte     |         | (0 or 4 B) |
-+-------+---------------+----------------+------------+---------+------------+
++-------+-----------------------+----------------+------------+---------+------------------+
+| Start | Payload checksum type | Payload length | Header XOR | Payload | Payload checksum |
+| 0x01  | 1 byte                | 2 bytes        | 1 byte     |         | (0 or 4 B)       |
++-------+-----------------------+----------------+------------+---------+------------------+
 ```
 
-The Header XOR field contains XOR of the preceding 4 bytes. It's used to check
-integrity of the header - a simple and cheap parity check.
+The `Header XOR` field contains XOR of the preceding 4 bytes. It's used to check
+integrity of the header. If the `Header XOR` does not match, the receiver MUST 
+discard the packet.
 
-If the XOR does not match, the receiver can be confident it's not a valid 
-packet, and MUST discard it.
-
-The checksum type is specified in advance, so the checksum can be calculated
-"on-the-fly" by the receiver.
+The payload checksum type is specified in in the header, so the checksum can be 
+calculated on-the-fly by the receiving party.
 
 *If the checksum type is 0, the checksum field is omitted.*
 
 
 ## Checksum types
 
-Currently supported checksum types:
+Checksum type codes:
 
 - 0 - no checksum. *The checksum field is omitted.*
-- 8 - CRC8 One-wire, generating polynomial: x^8 + x^5 + x^4 + 1
-- 16 - CRC16-IBM, generating polynomial:  x^16 + x^15 + x^2 + 1
 - 32 - CRC32 (ANSI)
+
+Numbers 100-255 can be used for custom checksum types. Numbers < 100 are 
+reserved for possible use in future versions of this specification.
 
 **If possible, CRC32 should be used.**
 
-Other types are intended for applications where certain type of CRC is already
-implemented for different purpose, and can be re-used.
-
-If an unknown checksum type is used, but the header XOR matches, the receiver 
-may choose to accept the packet and ignore the checksum field.
+If a receiver does not support the checksum type used, it should simply ignore
+it.
 
 
 ## Shared serial line for SBMP and ASCII debug messages
