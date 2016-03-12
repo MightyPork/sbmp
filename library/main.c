@@ -9,7 +9,7 @@
 static SBMP_State *sbmp;
 
 
-static void msg_handler(uint8_t *payload, uint16_t length)
+static void frame_handler(uint8_t *payload, size_t length)
 {
 	printf("Received a payload of length %u\n", length);
 	for (int i = 0; i < length; i++) {
@@ -22,7 +22,7 @@ static void msg_handler(uint8_t *payload, uint16_t length)
 
 int main(void)
 {
-	sbmp = sbmp_init(msg_handler, 20);
+	sbmp = sbmp_init(frame_handler, 20);
 
 	const uint8_t packet[] = {
 		0x01,                    // start byte

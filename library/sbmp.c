@@ -15,7 +15,7 @@
 
 // protos
 static void sbmp_reset(SBMP_State *state);
-static void rx_done(SBMP_State *state);
+static void call_frame_rx_callback(SBMP_State *state);
 static void cksum_begin(SBMP_State *state);
 static void cksum_update(SBMP_State *state, uint8_t byte);
 static uint32_t cksum_end(SBMP_State *state);
@@ -61,21 +61,21 @@ struct SBMP_State_struct {
 	enum SBMP_RxParseState parse_state;
 
 	uint8_t *rx_buffer;     /*!< Incoming packet buffer */
-	uint16_t rx_buffer_i;   /*!< Buffer cursor */
-	uint16_t rx_buffer_cap; /*!< Buffer capacity */
+	size_t rx_buffer_i;   /*!< Buffer cursor */
+	size_t rx_buffer_cap; /*!< Buffer capacity */
 
-	uint16_t payload_length; /*!< Total payload length */
+	size_t payload_length; /*!< Total payload length */
 
 	SBMP_ChecksumType cksum_type; /*!< Current packet's checksum type */
 
 	uint32_t crc_old; /*!< crc aggregation field */
 
-	void (*msg_handler)(uint8_t *payload, uint16_t length); /*!< Message received handler */
+	void (*frame_handler)(uint8_t *payload, size_t length); /*!< Message received handler */
 };
 
 
 /** Allocate the state struct & init all fields */
-SBMP_State *sbmp_init(void(*msg_handler)(uint8_t *, uint16_t), uint16_t buffer_size)
+SBMP_State *sbmp_init(void (*frame_handler)(uint8_t *, size_t), size_t buffer_size)
 {
 	SBMP_State *state = malloc(sizeof(SBMP_State));
 
@@ -85,7 +85,7 @@ SBMP_State *sbmp_init(void(*msg_handler)(uint8_t *, uint16_t), uint16_t buffer_s
 		return NULL;
 	}
 
-	state->msg_handler = msg_handler;
+	state->frame_handler = frame_handler;
 
 	// Allocate the buffer
 	state->rx_buffer = malloc(buffer_size);
@@ -159,10 +159,10 @@ void set_byte(uint32_t *acc, uint8_t pos, uint8_t byte)
  * Call the message handler with a copy of the payload,
  * clear the internal state.
  */
-static void rx_done(SBMP_State *state)
+static void call_frame_rx_callback(SBMP_State *state)
 {
-	if (state->msg_handler == NULL) {
-		sbmp_error("msg_handler is null!");
+	if (state->frame_handler == NULL) {
+		sbmp_error("frame_handler is null!");
 		goto done;
 	}
 
@@ -175,7 +175,7 @@ static void rx_done(SBMP_State *state)
 
 	memcpy(buf, state->rx_buffer, state->rx_buffer_i);
 
-	state->msg_handler(buf, state->payload_length);
+	state->frame_handler(buf, state->payload_length);
 
 done:
 	sbmp_reset(state);
@@ -250,7 +250,7 @@ void sbmp_receive(SBMP_State *state, uint8_t rxbyte)
 
 			// Check if not too long
 			if (state->payload_length > state->rx_buffer_cap) {
-				sbmp_error("Rx packet too long - %"PRIu16"!", state->payload_length);
+				sbmp_error("Rx packet too long - %"PRIu32"!", (uint32_t)state->payload_length);
 				sbmp_reset(state); // abort
 				break;
 			}
@@ -276,7 +276,7 @@ void sbmp_receive(SBMP_State *state, uint8_t rxbyte)
 				} else {
 					// no checksum
 					// fire the callback
-					rx_done(state);
+					call_frame_rx_callback(state);
 				}
 			}
 			break;
@@ -296,7 +296,7 @@ void sbmp_receive(SBMP_State *state, uint8_t rxbyte)
 			if (state->mb_cnt == 4) {
 
 				if (cksum_verify(state, state->mb_buf)) {
-					rx_done(state); // call the callback fn
+					call_frame_rx_callback(state);
 				} else {
 					sbmp_error("Rx checksum mismatch!");
 				}
@@ -307,7 +307,6 @@ void sbmp_receive(SBMP_State *state, uint8_t rxbyte)
 			break;
 	}
 }
-
 
 // --- Functions for calculating a SBMP checksum ---
 
@@ -351,3 +350,39 @@ static bool cksum_verify(SBMP_State *state, uint32_t received_cksum)
 }
 
 // ---------------------------------------------------
+
+
+// --- Higher level of the protocol ------------------
+
+SBMP_Datagram *sbmp_parse_datagram(uint8_t *payload, size_t length)
+{
+	if (length < 3) {
+		return NULL; // shorter than the minimal no-payload datagram
+	}
+
+	SBMP_Datagram *dg = malloc(sizeof(SBMP_Datagram));
+
+	// S.N. (2 B) | Dg Type (1 B) | Payload
+
+	dg->_backing_buffer = payload;
+	dg->session_number = (uint16_t)((payload[0]) | (payload[1] << 8));
+	dg->datagram_type = payload[2];
+	dg->datagram_length = length - 3;
+	dg->datagram = payload + 3; // pointer arith
+
+	return dg;
+}
+
+
+void sbmp_destroy_datagram(SBMP_Datagram *dg)
+{
+	if (dg == NULL) return;
+
+	if (dg->_backing_buffer != NULL) {
+		// free the payload buffer
+		free(dg->_backing_buffer);
+	}
+
+	// free the DG itself
+	free(dg);
+}

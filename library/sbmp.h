@@ -20,7 +20,7 @@ typedef struct {
 	uint8_t *_backing_buffer; /*!< Backing malloc'd buffer. Must be freed when freeing the datagram! */
 	uint8_t *datagram;        /*!< Datagram payload */
 	uint8_t  datagram_type;   /*!< Datagram type ID */
-	uint16_t datagram_length; /*!< Datagram length (bytes) */
+	size_t datagram_length; /*!< Datagram length (bytes) */
 	uint16_t session_number;  /*!< Datagram session number */
 } SBMP_Datagram;
 
@@ -36,10 +36,14 @@ void sbmp_receive(SBMP_State *state, uint8_t rxbyte);
 
 /**
  * @brief Allocate & initialize the SBMP internal state struct
+ * @param frame_handler : frame rx callback.
  * @param buffer_size : size of the payload buffer
  * @return pointer to the allocated struct
  */
-SBMP_State *sbmp_init(void (*msg_handler)(uint8_t* payload, uint16_t length), uint16_t buffer_size);
+SBMP_State *sbmp_init(
+	void (*frame_handler)(uint8_t *payload, size_t length),
+	size_t buffer_size
+);
 
 /**
  * @brief De-init the SBMP state structure & free all allocated memory
@@ -47,3 +51,26 @@ SBMP_State *sbmp_init(void (*msg_handler)(uint8_t* payload, uint16_t length), ui
  * @param state : the state struct
  */
 void sbmp_destroy(SBMP_State *state);
+
+/**
+ * @brief Convert a buffer payload to a datagram.
+ *
+ * If the payload is < 3 bytes long, datagram can't be createdn and NULL
+ * is returned instead. The caller should then free the payload buffer.
+ *
+ * @attention
+ * The datagram has to be destroyed using sbmp_destroy_datagram() when
+ * no longer needed, to free the used memory. This also frees the payload buffer.
+ *
+ * @param payload : frame payload to parse
+ * @param length  : payload length
+ * @return allocated datagram backed by the frame payload buffer.
+ */
+SBMP_Datagram *sbmp_parse_datagram(uint8_t *payload, size_t length);
+
+/**
+ * @brief Free all memory used by a datagram and the backing payload buffer.
+ *
+ * @param dg : datagram
+ */
+void sbmp_destroy_datagram(SBMP_Datagram *dg);
