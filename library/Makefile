@@ -5,4 +5,4 @@ run: main
 	@./main
 
 clean:
-	rm -f *.o *.lst
+	rm -f *.o *.lst main
