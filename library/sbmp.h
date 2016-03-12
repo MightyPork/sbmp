@@ -7,10 +7,8 @@
 
 /** Checksum types */
 typedef enum {
-	SBMP_CKSUM_NONE = 0, // No checksum
-	SBMP_CKSUM_CRC8 = 8, // Dallas/Maxim OneWire CRC-8
-	SBMP_CKSUM_CRC16 = 16, // IBM CRC-16
-	SBMP_CKSUM_CRC32 = 32, // ISO CRC-32
+	SBMP_CKSUM_NONE = 0,   /*!< No checksum */
+	SBMP_CKSUM_CRC32 = 32, /*!< ISO CRC-32 */
 } SBMP_ChecksumType;
 
 /**
