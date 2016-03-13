@@ -1,0 +1,14 @@
+style=kr
+indent=tab
+max-instatement-indent=60
+
+convert-tabs
+
+indent-switches
+keep-one-line-statements
+
+pad-oper
+unpad-paren
+pad-header
+
+verbose
