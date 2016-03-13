@@ -14,12 +14,16 @@
 #define SBMP_FRM_START 0x01
 
 // protos
-static void sbmp_reset(SBMP_State *state);
+static void reset_rx_state(SBMP_State *state);
+static void reset_tx_state(SBMP_State *state);
 static void call_frame_rx_callback(SBMP_State *state);
-static void cksum_begin(SBMP_State *state);
-static void cksum_update(SBMP_State *state, uint8_t byte);
-static uint32_t cksum_end(SBMP_State *state);
-static bool cksum_verify(SBMP_State *state, uint32_t received_cksum);
+static void rx_cksum_begin(SBMP_State *state);
+static void rx_cksum_update(SBMP_State *state, uint8_t byte);
+static uint32_t rx_cksum_end(SBMP_State *state);
+static bool rx_cksum_verify(SBMP_State *state, uint32_t received_cksum);
+static void tx_cksum_begin(SBMP_State *state);
+static void tx_cksum_update(SBMP_State *state, uint8_t byte);
+static uint32_t tx_cksum_end(SBMP_State *state);
 
 
 /**
@@ -39,44 +43,60 @@ sbmp_error(const char* format, ...)
 }
 
 
-
+// "packet state"
 enum SBMP_RxParseState {
 	PCK_STATE_IDLE,
 	PCK_STATE_CKSUM_TYPE,
 	PCK_STATE_LENGTH,
 	PCK_STATE_HDRXOR,
 	PCK_STATE_PAYLOAD,
-	PCK_STATE_PAYLOAD_DISCARD, // if bad checksum type
 	PCK_STATE_CKSUM,
 };
 
 /** Internal state of the SBMP node */
 struct SBMP_State_struct {
-	// for parsing multi-byte values
-	uint32_t mb_buf;
+
+	// --- reception ---
+
+	uint32_t mb_buf; /*!< Multi-byte value buffer */
 	uint8_t mb_cnt;
 
-	uint8_t hdr_xor; /*!< Header xor field */
+	uint8_t rx_hdr_xor; /*!< Header xor field */
 
-	enum SBMP_RxParseState parse_state;
+	enum SBMP_RxParseState rx_state;
 
 	uint8_t *rx_buffer;     /*!< Incoming packet buffer */
 	size_t rx_buffer_i;   /*!< Buffer cursor */
 	size_t rx_buffer_cap; /*!< Buffer capacity */
 
-	size_t payload_length; /*!< Total payload length */
+	size_t rx_length; /*!< Total payload length */
 
-	SBMP_ChecksumType cksum_type; /*!< Current packet's checksum type */
+	SBMP_ChecksumType rx_cksum_type; /*!< Current packet's checksum type */
 
-	uint32_t crc_old; /*!< crc aggregation field */
+	uint32_t rx_crc_scratch; /*!< crc aggregation field for received data */
 
-	void (*frame_handler)(uint8_t *payload, size_t length); /*!< Message received handler */
+	void (*rx_handler)(uint8_t *payload, size_t length); /*!< Message received handler */
+
+	// --- transmission ---
+
+	size_t tx_remain; /*!< Number of bytes to transmit */
+	SBMP_ChecksumType tx_cksum_type;
+	uint32_t tx_crc_scratch; /*!< crc aggregation field for transmit */
+	enum SBMP_RxParseState tx_state;
+
+	// output functions. Only tx_func is needed.
+	void (*tx_func)(uint8_t byte);  /*!< Function to send one byte */
+	void (*tx_lock_func)(void);     /*!< Lock the serial interface tx (called before a frame) */
+	void (*tx_release_func)(void);  /*!< Release the serial interface tx (called after a frame) */
 };
 
 
 /** Allocate the state struct & init all fields */
-SBMP_State *sbmp_init(void (*frame_handler)(uint8_t *, size_t), size_t buffer_size)
-{
+SBMP_State *sbmp_init(
+		void (*rx_handler)(uint8_t *, size_t),
+		void (*tx_func)(uint8_t),
+		size_t buffer_size
+) {
 	SBMP_State *state = malloc(sizeof(SBMP_State));
 
 	if (state == NULL) {
@@ -85,7 +105,7 @@ SBMP_State *sbmp_init(void (*frame_handler)(uint8_t *, size_t), size_t buffer_si
 		return NULL;
 	}
 
-	state->frame_handler = frame_handler;
+	state->rx_handler = rx_handler;
 
 	// Allocate the buffer
 	state->rx_buffer = malloc(buffer_size);
@@ -98,7 +118,12 @@ SBMP_State *sbmp_init(void (*frame_handler)(uint8_t *, size_t), size_t buffer_si
 		return NULL;
 	}
 
-	sbmp_reset(state);
+	state->tx_func = tx_func;
+	state->tx_lock_func = NULL;
+	state->tx_release_func = NULL;
+
+	reset_rx_state(state);
+	reset_tx_state(state);
 
 	return state;
 }
@@ -116,29 +141,38 @@ void sbmp_destroy(SBMP_State *state)
 }
 
 /** Reset the receiver state  */
-static void sbmp_reset(SBMP_State *state)
+static void reset_rx_state(SBMP_State *state)
 {
 	state->rx_buffer_i = 0;
-	state->payload_length = 0;
+	state->rx_length = 0;
 	state->mb_buf = 0;
 	state->mb_cnt = 0;
-	state->hdr_xor = 0;
-	state->cksum_type = SBMP_CKSUM_NONE;
-	state->parse_state = PCK_STATE_IDLE;
+	state->rx_hdr_xor = 0;
+	state->rx_cksum_type = SBMP_CKSUM_NONE;
+	state->rx_state = PCK_STATE_IDLE;
+}
+
+/** Reset the transmitter state */
+static void reset_tx_state(SBMP_State *state)
+{
+	state->tx_state = PCK_STATE_IDLE;
+	state->tx_remain = 0;
+	state->tx_crc_scratch = 0;
+	state->tx_cksum_type = SBMP_CKSUM_NONE;
 }
 
 /** Update a header XOR */
 static inline
 void hdrxor_update(SBMP_State *state, uint8_t rxbyte)
 {
-	state->hdr_xor ^= rxbyte;
+	state->rx_hdr_xor ^= rxbyte;
 }
 
 /** Check header xor against received value */
 static inline
 bool hdrxor_verify(SBMP_State *state, uint8_t rx_xor)
 {
-	return state->hdr_xor == rx_xor;
+	return state->rx_hdr_xor == rx_xor;
 }
 
 /** Append a byte to the rx buffer */
@@ -161,12 +195,12 @@ void set_byte(uint32_t *acc, uint8_t pos, uint8_t byte)
  */
 static void call_frame_rx_callback(SBMP_State *state)
 {
-	if (state->frame_handler == NULL) {
+	if (state->rx_handler == NULL) {
 		sbmp_error("frame_handler is null!");
 		goto done;
 	}
 
-	uint8_t *buf = malloc(state->payload_length);
+	uint8_t *buf = malloc(state->rx_length);
 	if (buf == NULL) {
 		// malloc failed
 		sbmp_error("Payload malloc failed!");
@@ -175,10 +209,10 @@ static void call_frame_rx_callback(SBMP_State *state)
 
 	memcpy(buf, state->rx_buffer, state->rx_buffer_i);
 
-	state->frame_handler(buf, state->payload_length);
+	state->rx_handler(buf, state->rx_length);
 
 done:
-	sbmp_reset(state);
+	reset_rx_state(state);
 }
 
 /**
@@ -191,7 +225,7 @@ done:
  */
 void sbmp_receive(SBMP_State *state, uint8_t rxbyte)
 {
-	switch (state->parse_state) {
+	switch (state->rx_state) {
 		case PCK_STATE_IDLE:
 			// can be first byte of a packet
 
@@ -201,18 +235,18 @@ void sbmp_receive(SBMP_State *state, uint8_t rxbyte)
 				hdrxor_update(state, rxbyte);
 
 				// clean the parser state
-				state->cksum_type = SBMP_CKSUM_NONE;
-				state->parse_state = PCK_STATE_CKSUM_TYPE;
+				state->rx_cksum_type = SBMP_CKSUM_NONE;
+				state->rx_state = PCK_STATE_CKSUM_TYPE;
 			}
 			break;
 
 		case PCK_STATE_CKSUM_TYPE:
-			state->cksum_type = rxbyte; // checksum type received
+			state->rx_cksum_type = rxbyte; // checksum type received
 
 			hdrxor_update(state, rxbyte);
 
 			// next will be length
-			state->parse_state = PCK_STATE_LENGTH;
+			state->rx_state = PCK_STATE_LENGTH;
 			// clear MB for 2-byte length
 			state->mb_buf = 0;
 			state->mb_cnt = 0;
@@ -229,46 +263,46 @@ void sbmp_receive(SBMP_State *state, uint8_t rxbyte)
 
 				// next will be the payload
 				uint16_t len = (uint16_t) state->mb_buf;
-				state->payload_length = len;
+				state->rx_length = len;
 
 				if (len == 0) {
 					sbmp_error("Rx packet with no payload!");
-					sbmp_reset(state); // abort
+					reset_rx_state(state); // abort
 					break;
 				}
 
-				state->parse_state = PCK_STATE_HDRXOR;
+				state->rx_state = PCK_STATE_HDRXOR;
 			}
 			break;
 
 		case PCK_STATE_HDRXOR:
 			if (! hdrxor_verify(state, rxbyte)) {
 				sbmp_error("Header XOR mismatch!");
-				sbmp_reset(state); // abort
+				reset_rx_state(state); // abort
 				break;
 			}
 
 			// Check if not too long
-			if (state->payload_length > state->rx_buffer_cap) {
-				sbmp_error("Rx packet too long - %"PRIu32"!", (uint32_t)state->payload_length);
-				sbmp_reset(state); // abort
+			if (state->rx_length > state->rx_buffer_cap) {
+				sbmp_error("Rx packet too long - %"PRIu32"!", (uint32_t)state->rx_length);
+				reset_rx_state(state); // abort
 				break;
 			}
 
-			state->parse_state = PCK_STATE_PAYLOAD;
-			cksum_begin(state);
+			state->rx_state = PCK_STATE_PAYLOAD;
+			rx_cksum_begin(state);
 			break;
 
 		case PCK_STATE_PAYLOAD:
 			append_rx_byte(state, rxbyte);
-			cksum_update(state, rxbyte);
+			rx_cksum_update(state, rxbyte);
 
-			if (state->rx_buffer_i == state->payload_length) {
+			if (state->rx_buffer_i == state->rx_length) {
 				// payload rx complete
 
-				if (state->cksum_type != SBMP_CKSUM_NONE) {
+				if (state->rx_cksum_type != SBMP_CKSUM_NONE) {
 					// receive the checksum
-					state->parse_state = PCK_STATE_CKSUM;
+					state->rx_state = PCK_STATE_CKSUM;
 
 					// clear MB for 4-byte length
 					state->mb_buf = 0;
@@ -281,13 +315,6 @@ void sbmp_receive(SBMP_State *state, uint8_t rxbyte)
 			}
 			break;
 
-		case PCK_STATE_PAYLOAD_DISCARD:
-			if (state->rx_buffer_i == state->payload_length) {
-				// payload received fully
-				state->parse_state = PCK_STATE_IDLE;
-			}
-			break;
-
 		case PCK_STATE_CKSUM:
 			// append to the multi-byte buffer
 			set_byte(&state->mb_buf, state->mb_cnt++, rxbyte);
@@ -295,14 +322,14 @@ void sbmp_receive(SBMP_State *state, uint8_t rxbyte)
 			// if last of the MB field
 			if (state->mb_cnt == 4) {
 
-				if (cksum_verify(state, state->mb_buf)) {
+				if (rx_cksum_verify(state, state->mb_buf)) {
 					call_frame_rx_callback(state);
 				} else {
 					sbmp_error("Rx checksum mismatch!");
 				}
 
 				// end of the packet
-				state->parse_state = PCK_STATE_IDLE;
+				state->rx_state = PCK_STATE_IDLE;
 			}
 			break;
 	}
@@ -311,37 +338,37 @@ void sbmp_receive(SBMP_State *state, uint8_t rxbyte)
 // --- Functions for calculating a SBMP checksum ---
 
 /** Start calculating a checksum */
-static void cksum_begin(SBMP_State *state)
+static void rx_cksum_begin(SBMP_State *state)
 {
-	if (state->cksum_type == SBMP_CKSUM_CRC32) {
-		state->crc_old = crc32_begin();
+	if (state->rx_cksum_type == SBMP_CKSUM_CRC32) {
+		state->rx_crc_scratch = crc32_begin();
 	}
 }
 
 /** Update the checksum calculation with an incoming byte */
-static void cksum_update(SBMP_State *state, uint8_t byte)
+static void rx_cksum_update(SBMP_State *state, uint8_t byte)
 {
-	if (state->cksum_type == SBMP_CKSUM_CRC32) {
-		crc32_update(&state->crc_old, byte);
+	if (state->rx_cksum_type == SBMP_CKSUM_CRC32) {
+		crc32_update(&state->rx_crc_scratch, byte);
 	}
 }
 
 /** Stop the checksum calculation, get the result */
-static uint32_t cksum_end(SBMP_State *state)
+static uint32_t rx_cksum_end(SBMP_State *state)
 {
-	if (state->cksum_type == SBMP_CKSUM_CRC32) {
-		return crc32_end(state->crc_old);
+	if (state->rx_cksum_type == SBMP_CKSUM_CRC32) {
+		return crc32_end(state->rx_crc_scratch);
 	}
 
 	return 0;
 }
 
 /** Check if the calculated checksum matches the received one */
-static bool cksum_verify(SBMP_State *state, uint32_t received_cksum)
+static bool rx_cksum_verify(SBMP_State *state, uint32_t received_cksum)
 {
-	uint32_t computed = cksum_end(state);
+	uint32_t computed = rx_cksum_end(state);
 
-	if (state->cksum_type == SBMP_CKSUM_CRC32) {
+	if (state->rx_cksum_type == SBMP_CKSUM_CRC32) {
 		return (computed == received_cksum);
 	} else {
 		// unknown checksum type
@@ -349,7 +376,118 @@ static bool cksum_verify(SBMP_State *state, uint32_t received_cksum)
 	}
 }
 
+/** Start calculating a checksum */
+static void tx_cksum_begin(SBMP_State *state)
+{
+	if (state->tx_cksum_type == SBMP_CKSUM_CRC32) {
+		state->tx_crc_scratch = crc32_begin();
+	}
+}
+
+/** Update the checksum calculation with an incoming byte */
+static void tx_cksum_update(SBMP_State *state, uint8_t byte)
+{
+	if (state->tx_cksum_type == SBMP_CKSUM_CRC32) {
+		crc32_update(&state->tx_crc_scratch, byte);
+	}
+}
+
+/** Stop the checksum calculation, get the result */
+static uint32_t tx_cksum_end(SBMP_State *state)
+{
+	if (state->tx_cksum_type == SBMP_CKSUM_CRC32) {
+		return crc32_end(state->tx_crc_scratch);
+	}
+
+	return 0;
+}
+
 // ---------------------------------------------------
+
+bool sbmp_transmit_start(SBMP_State *state, SBMP_ChecksumType cksum_type, size_t length)
+{
+	if (state->tx_state != PCK_STATE_IDLE) return false;
+
+	if (length > 0xFFFF) {
+		sbmp_error("Tx packet too long.");
+		return false;
+	}
+
+	if (state->tx_func == NULL) {
+		sbmp_error("No tx func!");
+		return false;
+	}
+
+	reset_tx_state(state);
+
+	state->tx_cksum_type = cksum_type;
+	state->tx_remain = length;
+	state->tx_state = PCK_STATE_PAYLOAD;
+
+	if (state->tx_lock_func) {
+		state->tx_lock_func();
+	}
+
+	// Send the header
+
+	uint16_t len = (uint16_t) length;
+
+	uint8_t hdr[4] = {
+		0x01,
+		cksum_type,
+		len & 0xFF,
+		(len >> 8) & 0xFF
+	};
+
+	uint8_t hdr_xor = 0;
+	for (int i = 0; i < 4; i++) {
+		hdr_xor ^= hdr[i];
+		state->tx_func(hdr[i]);
+	}
+
+	state->tx_func(hdr_xor);
+
+	tx_cksum_begin(state);
+
+	return true;
+}
+
+
+void sbmp_transmit_byte(SBMP_State *state, uint8_t byte)
+{
+	state->tx_func(byte);
+	tx_cksum_update(state, byte);
+	state->tx_remain--;
+
+	if (state->tx_remain == 0) {
+		if (state->tx_cksum_type != SBMP_CKSUM_NONE) {
+			uint32_t cksum = tx_cksum_end(state);
+
+			// send the checksum
+			state->tx_func(cksum & 0xFF);
+			state->tx_func((cksum >> 8) & 0xFF);
+			state->tx_func((cksum >> 16) & 0xFF);
+			state->tx_func((cksum >> 24) & 0xFF);
+		}
+
+		if (state->tx_release_func) {
+			state->tx_release_func();
+		}
+
+		state->tx_state = PCK_STATE_IDLE; // tx done
+	}
+}
+
+
+size_t sbmp_transmit_buffer(SBMP_State *state, const uint8_t *buffer, size_t length)
+{
+	size_t remain = length;
+	while (state->tx_state == PCK_STATE_PAYLOAD && remain-- > 0) {
+		sbmp_transmit_byte(state, *buffer++);
+	}
+
+	return (length - remain);
+}
 
 
 // --- Higher level of the protocol ------------------

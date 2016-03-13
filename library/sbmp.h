@@ -28,20 +28,15 @@ typedef struct {
 typedef struct SBMP_State_struct SBMP_State;
 
 /**
- * @brief Handle an incoming byte
- * @param state  : SBMP receiver state struct
- * @param rxbyte : byte received
- */
-void sbmp_receive(SBMP_State *state, uint8_t rxbyte);
-
-/**
  * @brief Allocate & initialize the SBMP internal state struct
+ *
  * @param frame_handler : frame rx callback.
  * @param buffer_size : size of the payload buffer
  * @return pointer to the allocated struct
  */
 SBMP_State *sbmp_init(
-	void (*frame_handler)(uint8_t *payload, size_t length),
+	void (*rx_handler)(uint8_t *payload, size_t length),
+	void (*tx_func)(uint8_t byte),
 	size_t buffer_size
 );
 
@@ -53,7 +48,49 @@ SBMP_State *sbmp_init(
 void sbmp_destroy(SBMP_State *state);
 
 /**
- * @brief Convert a buffer payload to a datagram.
+ * @brief Handle an incoming byte
+ *
+ * @param state  : SBMP state struct
+ * @param rxbyte : byte received
+ */
+void sbmp_receive(SBMP_State *state, uint8_t rxbyte);
+
+/**
+ * @brief Start a frame transmission
+ *
+ * @param state : SBMP state struct
+ * @param cksum_type : checksum to use (0, 32)
+ * @param length : payload length
+ * @return true if frame was started.
+ */
+bool sbmp_transmit_start(SBMP_State *state, SBMP_ChecksumType cksum_type, size_t length);
+
+/**
+ * @brief Send one byte in the open frame.
+ *
+ * If this is the last payload byte, the checksum (if requested)
+ * is sent, and the transmitter enters IDLE mode.
+ *
+ * @param state : SBMP state struct
+ * @param byte : byte to send
+ */
+void sbmp_transmit_byte(SBMP_State *state, uint8_t byte);
+
+/**
+ * @brief Send a data buffer (or a part).
+ *
+ * If the payload is completed, checksum will be added and
+ * the transmitter enters IDLE mode.
+ *
+ * @param state : SBMP state struct
+ * @param buffer : buffer of bytes to send
+ * @param length : buffer length (byte count)
+ * @return actual sent length (until payload is full)
+ */
+size_t sbmp_transmit_buffer(SBMP_State *state, const uint8_t *buffer, size_t length);
+
+/**
+ * @brief Convert a received buffer payload to a datagram.
  *
  * If the payload is < 3 bytes long, datagram can't be createdn and NULL
  * is returned instead. The caller should then free the payload buffer.
@@ -66,7 +103,7 @@ void sbmp_destroy(SBMP_State *state);
  * @param length  : payload length
  * @return allocated datagram backed by the frame payload buffer.
  */
-SBMP_Datagram *sbmp_parse_datagram(uint8_t *payload, size_t length);
+SBMP_Datagram *sbmp_parse_datagram(uint8_t *rx_payload, size_t length);
 
 /**
  * @brief Free all memory used by a datagram and the backing payload buffer.
