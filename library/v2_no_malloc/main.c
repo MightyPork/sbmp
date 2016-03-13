@@ -7,9 +7,9 @@
 
 #include "sbmp/sbmp.h"
 
-static void frame_handler(uint8_t *payload, uint16_t length);
+static void frame_received(uint8_t *payload, uint16_t length);
 static void print_char(uint8_t byte);
-static void tx_fn(uint8_t byte);
+static void usart_tx_byte(uint8_t byte);
 
 // SBMP instance
 static uint8_t sbmp_buf[100];
@@ -26,7 +26,7 @@ int main(void)
 
 	// --- Set up SBMP ---
 
-	sbmp_init(&sbmp, sbmp_buf, 100, frame_handler, tx_fn);
+	sbmp_init(&sbmp, sbmp_buf, 100, frame_received, usart_tx_byte);
 
 
 	// --- Using the framing layer directly ---
@@ -35,7 +35,7 @@ int main(void)
 	sbmp_start_frame(&sbmp, 32, 11);
 	// Send frame data
 	uint16_t sent = sbmp_send_buffer(&sbmp, (uint8_t*)"HELLO WORLDasdf", 15);
-	// (will print only what fits in the frame)
+	// (will send only what fits in the frame)
 	printf("Sent %d bytes.\n", sent);
 
 
@@ -61,7 +61,7 @@ int main(void)
 
 
 /** SBMP transmit callback */
-static void tx_fn(uint8_t byte)
+static void usart_tx_byte(uint8_t byte)
 {
 	// SBMP wants to send a byte to the USART
 
@@ -80,7 +80,7 @@ static void tx_fn(uint8_t byte)
 }
 
 
-/** Error print function - overriding weak stub from SBMP */
+/** Error print function [ overriding weak stub from SBMP ] */
 void sbmp_error(const char* format, ...)
 {
 	// print a tag
@@ -107,7 +107,7 @@ static void print_char(uint8_t byte)
 
 
 /** Frame RX callback for SBMP */
-static void frame_handler(uint8_t *payload, uint16_t length)
+static void frame_received(uint8_t *payload, uint16_t length)
 {
 	printf("Received a payload of length %u\n", length);
 
