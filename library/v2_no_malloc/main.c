@@ -76,6 +76,7 @@ static void usart_tx_byte(uint8_t byte)
 	}
 */
 
+	// Send it back - as if we just received it.
 	sbmp_receive(&sbmp, byte);
 }
 
@@ -93,15 +94,6 @@ void sbmp_error(const char* format, ...)
 	va_end(va);
 
 	// newline
-	printf("\n");
-}
-
-
-/** Print a byte hexdump-style */
-static void print_char(uint8_t byte)
-{
-	printf("0x%02x, %d", byte, byte); // show hex and dec
-	if (byte >= 32 && byte < 128) printf(" '%c'", byte); // show the char
 	printf("\n");
 }
 
@@ -135,4 +127,14 @@ static void frame_received(uint8_t *payload, uint16_t length)
 			print_char(payload[i]);
 		}
 	}
+}
+
+
+
+/** Print a byte hexdump-style */
+static void print_char(uint8_t byte)
+{
+	printf("0x%02x, %d", byte, byte); // show hex and dec
+	if (byte >= 32 && byte < 128) printf(" '%c'", byte); // show the char
+	printf("\n");
 }
