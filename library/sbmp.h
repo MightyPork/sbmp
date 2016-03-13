@@ -18,10 +18,10 @@ typedef enum {
  */
 typedef struct {
 	uint8_t *_backing_buffer; /*!< Backing malloc'd buffer. Must be freed when freeing the datagram! */
-	uint8_t *datagram;        /*!< Datagram payload */
-	uint8_t  datagram_type;   /*!< Datagram type ID */
-	size_t datagram_length; /*!< Datagram length (bytes) */
-	uint16_t session_number;  /*!< Datagram session number */
+	uint8_t *payload;        /*!< Datagram payload */
+	uint8_t  type;   /*!< Datagram type ID */
+	size_t length; /*!< Datagram length (bytes) */
+	uint16_t session;  /*!< Datagram session number */
 } SBMP_Datagram;
 
 /** Internal SBMP state */
@@ -73,8 +73,9 @@ bool sbmp_transmit_start(SBMP_State *state, SBMP_ChecksumType cksum_type, size_t
  *
  * @param state : SBMP state struct
  * @param byte : byte to send
+ * @return true on success (value did fit in a frame)
  */
-void sbmp_transmit_byte(SBMP_State *state, uint8_t byte);
+bool sbmp_transmit_byte(SBMP_State *state, uint8_t byte);
 
 /**
  * @brief Send a data buffer (or a part).
@@ -111,3 +112,12 @@ SBMP_Datagram *sbmp_parse_datagram(uint8_t *rx_payload, size_t length);
  * @param dg : datagram
  */
 void sbmp_destroy_datagram(SBMP_Datagram *dg);
+
+/** Start a datagram transmission */
+bool sbmp_datagram_start(SBMP_State *state, SBMP_ChecksumType cksum_type, uint16_t session, uint8_t type, size_t length);
+
+/** Send a byte in the datagram */
+bool sbmp_datagram_add_byte(SBMP_State *state, uint8_t byte);
+
+/** Send a buffer in the datagram */
+size_t sbmp_datagram_add_buffer(SBMP_State *state, const uint8_t *payload, size_t length);

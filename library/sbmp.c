@@ -406,7 +406,10 @@ static uint32_t tx_cksum_end(SBMP_State *state)
 
 bool sbmp_transmit_start(SBMP_State *state, SBMP_ChecksumType cksum_type, size_t length)
 {
-	if (state->tx_state != PCK_STATE_IDLE) return false;
+	if (state->tx_state != PCK_STATE_IDLE) {
+		sbmp_error("Tx busy.");
+		return false;
+	}
 
 	if (length > 0xFFFF) {
 		sbmp_error("Tx packet too long.");
@@ -453,8 +456,10 @@ bool sbmp_transmit_start(SBMP_State *state, SBMP_ChecksumType cksum_type, size_t
 }
 
 
-void sbmp_transmit_byte(SBMP_State *state, uint8_t byte)
+bool sbmp_transmit_byte(SBMP_State *state, uint8_t byte)
 {
+	if (state->tx_remain == 0) return false;
+
 	state->tx_func(byte);
 	tx_cksum_update(state, byte);
 	state->tx_remain--;
@@ -476,6 +481,8 @@ void sbmp_transmit_byte(SBMP_State *state, uint8_t byte)
 
 		state->tx_state = PCK_STATE_IDLE; // tx done
 	}
+
+	return true;
 }
 
 
@@ -495,6 +502,7 @@ size_t sbmp_transmit_buffer(SBMP_State *state, const uint8_t *buffer, size_t len
 SBMP_Datagram *sbmp_parse_datagram(uint8_t *payload, size_t length)
 {
 	if (length < 3) {
+		sbmp_error("Can't parse datagram, payload too short.");
 		return NULL; // shorter than the minimal no-payload datagram
 	}
 
@@ -503,13 +511,14 @@ SBMP_Datagram *sbmp_parse_datagram(uint8_t *payload, size_t length)
 	// S.N. (2 B) | Dg Type (1 B) | Payload
 
 	dg->_backing_buffer = payload;
-	dg->session_number = (uint16_t)((payload[0]) | (payload[1] << 8));
-	dg->datagram_type = payload[2];
-	dg->datagram_length = length - 3;
-	dg->datagram = payload + 3; // pointer arith
+	dg->session = (uint16_t)((payload[0]) | (payload[1] << 8));
+	dg->type = payload[2];
+	dg->length = length - 3;
+	dg->payload = payload + 3; // pointer arith
 
 	return dg;
 }
+
 
 
 void sbmp_destroy_datagram(SBMP_Datagram *dg)
@@ -523,4 +532,34 @@ void sbmp_destroy_datagram(SBMP_Datagram *dg)
 
 	// free the DG itself
 	free(dg);
+}
+
+
+/** Start a datagram transmission */
+bool sbmp_datagram_start(SBMP_State *state, SBMP_ChecksumType cksum_type, uint16_t session, uint8_t type, size_t length)
+{
+	if (length > (0xFFFF - 3)) {
+		sbmp_error("Can't send a datagram, payload too long.");
+		return false;
+	}
+
+	if (! sbmp_transmit_start(state, cksum_type, length + 3)) return false;
+
+	sbmp_transmit_byte(state, session & 0xFF);
+	sbmp_transmit_byte(state, (session >> 8) & 0xFF);
+	sbmp_transmit_byte(state, type);
+
+	return true;
+}
+
+/** Send a byte in the datagram */
+bool sbmp_datagram_add_byte(SBMP_State *state, uint8_t byte)
+{
+	return sbmp_transmit_byte(state, byte);
+}
+
+/** Send a buffer in the datagram */
+size_t sbmp_datagram_add_buffer(SBMP_State *state, const uint8_t *payload, size_t length)
+{
+	return sbmp_transmit_buffer(state, payload, length);
 }
