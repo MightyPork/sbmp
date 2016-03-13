@@ -65,6 +65,8 @@ static void usart_tx_byte(uint8_t byte)
 {
 	// SBMP wants to send a byte to the USART
 
+	// In real application, we should now send it to the USART peripheral.
+
 	printf("Tx : ");
 	print_char(byte);
 
@@ -77,7 +79,17 @@ static void usart_tx_byte(uint8_t byte)
 */
 
 	// Send it back - as if we just received it.
-	sbmp_receive(&sbmp, byte);
+	SBMP_RxStatus status = sbmp_receive(&sbmp, byte);
+
+	// TODO should check if the byte was accepted
+
+	// The byte may be rejected if it's invalid, or if
+	// SBMP is currently busy waiting for the previous
+	// frame to be processed. A retry loop with a timeout
+	// should be used.
+
+	// In real application, the sbmp_receive() function
+	// will be called from an interrupt routine.
 }
 
 
@@ -109,7 +121,8 @@ static void frame_received(uint8_t *payload, uint16_t length)
 
 		SBMP_Datagram dg;
 
-		sbmp_parse_datagram(&dg, payload, length);
+		bool suc = sbmp_parse_datagram(&dg, payload, length);
+		// should now check if suc is true.
 
 		printf("Received datagram type %d, session %d, length %d\n", dg.type, dg.session, dg.length);
 
