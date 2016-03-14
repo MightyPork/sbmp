@@ -148,7 +148,7 @@ struct SBMP_FrmInstance_struct {
 
 	uint8_t rx_hdr_xor; /*!< Header xor scratch field */
 
-	enum SBMP_FrmStatus rx_state;
+	enum SBMP_FrmStatus rx_status;
 
 	bool enabled;       /*!< Frm enabled state. If disabled, all incoming bytes are rejected. */
 
@@ -159,8 +159,7 @@ struct SBMP_FrmInstance_struct {
 	uint16_t rx_length;     /*!< Total payload length */
 
 	SBMP_CksumType rx_cksum_type; /*!< Current packet's checksum type */
-
-	uint32_t rx_crc_scratch; /*!< crc aggregation field for received data */
+	uint32_t rx_cksum_scratch; /*!< crc aggregation field for received data */
 
 	void (*rx_handler)(uint8_t *payload, uint16_t length, void *user_token); /*!< Message received handler */
 
@@ -171,8 +170,9 @@ struct SBMP_FrmInstance_struct {
 
 	uint16_t tx_remain; /*!< Number of remaining bytes to transmit */
 	SBMP_CksumType tx_cksum_type;
-	uint32_t tx_crc_scratch; /*!< crc aggregation field for transmit */
-	enum SBMP_FrmStatus tx_state;
+	uint32_t tx_cksum_scratch; /*!< crc aggregation field for transmit */
+
+	enum SBMP_FrmStatus tx_status;
 
 	// output functions. Only tx_func is needed.
 	void (*tx_func)(uint8_t byte);  /*!< Function to send one byte */

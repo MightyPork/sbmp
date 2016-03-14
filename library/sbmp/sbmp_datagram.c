@@ -40,7 +40,7 @@ bool sbmp_start_datagram(SBMP_FrmInst *state, SBMP_CksumType cksum_type, uint16_
 		return false;
 	}
 
-	if (state->tx_state != FRM_STATE_IDLE) {
+	if (state->tx_status != FRM_STATE_IDLE) {
 		sbmp_error("Can't state datagram, SBMP tx not IDLE.");
 		return false;
 	}

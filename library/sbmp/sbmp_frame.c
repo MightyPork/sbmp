@@ -85,18 +85,18 @@ static void reset_rx_state(SBMP_FrmInst *state)
 	state->mb_buf = 0;
 	state->mb_cnt = 0;
 	state->rx_hdr_xor = 0;
-	state->rx_crc_scratch = 0;
+	state->rx_cksum_scratch = 0;
 	state->rx_cksum_type = SBMP_CKSUM_NONE;
-	state->rx_state = FRM_STATE_IDLE;
+	state->rx_status = FRM_STATE_IDLE;
 //	printf("---- RX RESET STATE ----\n");
 }
 
 /** Reset the transmitter state */
 static void reset_tx_state(SBMP_FrmInst *state)
 {
-	state->tx_state = FRM_STATE_IDLE;
+	state->tx_status = FRM_STATE_IDLE;
 	state->tx_remain = 0;
-	state->tx_crc_scratch = 0;
+	state->tx_cksum_scratch = 0;
 	state->tx_cksum_type = SBMP_CKSUM_NONE;
 //	printf("---- TX RESET STATE ----\n");
 }
@@ -140,7 +140,7 @@ static void call_frame_rx_callback(SBMP_FrmInst *state)
 		return;
 	}
 
-	state->rx_state = FRM_STATE_WAIT_HANDLER;
+	state->rx_status = FRM_STATE_WAIT_HANDLER;
 	state->rx_handler(state->rx_buffer, state->rx_length, state->user_token);
 }
 
@@ -161,7 +161,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *state, uint8_t rxbyte)
 
 	SBMP_RxStatus retval = SBMP_RX_OK;
 
-	switch (state->rx_state) {
+	switch (state->rx_status) {
 		case FRM_STATE_WAIT_HANDLER:
 			retval = SBMP_RX_BUSY;
 			break;
@@ -173,7 +173,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *state, uint8_t rxbyte)
 
 				hdrxor_update(state, rxbyte);
 
-				state->rx_state = FRM_STATE_CKSUM_TYPE;
+				state->rx_status = FRM_STATE_CKSUM_TYPE;
 			} else {
 				// bad char
 				retval = SBMP_RX_INVALID;
@@ -186,7 +186,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *state, uint8_t rxbyte)
 			hdrxor_update(state, rxbyte);
 
 			// next will be length
-			state->rx_state = FRM_STATE_LENGTH;
+			state->rx_status = FRM_STATE_LENGTH;
 			// clear MB for 2-byte length
 			state->mb_buf = 0;
 			state->mb_cnt = 0;
@@ -211,7 +211,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *state, uint8_t rxbyte)
 					break;
 				}
 
-				state->rx_state = FRM_STATE_HDRXOR;
+				state->rx_status = FRM_STATE_HDRXOR;
 			}
 			break;
 
@@ -226,13 +226,13 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *state, uint8_t rxbyte)
 			if (state->rx_length > state->rx_buffer_cap) {
 				sbmp_error("Rx packet too long - %"PRIu16"!", (uint16_t)state->rx_length);
 				// discard the rest + checksum
-				state->rx_state = FRM_STATE_DISCARD;
+				state->rx_status = FRM_STATE_DISCARD;
 				state->rx_length += checksum_length(state->rx_cksum_type);
 				break;
 			}
 
-			state->rx_state = FRM_STATE_PAYLOAD;
-			cksum_begin(state->rx_cksum_type, &state->rx_crc_scratch);
+			state->rx_status = FRM_STATE_PAYLOAD;
+			cksum_begin(state->rx_cksum_type, &state->rx_cksum_scratch);
 			break;
 
 		case FRM_STATE_DISCARD:
@@ -245,14 +245,14 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *state, uint8_t rxbyte)
 
 		case FRM_STATE_PAYLOAD:
 			append_rx_byte(state, rxbyte);
-			cksum_update(state->rx_cksum_type, &state->rx_crc_scratch, rxbyte);
+			cksum_update(state->rx_cksum_type, &state->rx_cksum_scratch, rxbyte);
 
 			if (state->rx_buffer_i == state->rx_length) {
 				// payload rx complete
 
 				if (state->rx_cksum_type != SBMP_CKSUM_NONE) {
 					// receive the checksum
-					state->rx_state = FRM_STATE_CKSUM;
+					state->rx_status = FRM_STATE_CKSUM;
 
 					// clear MB for the 4-byte length
 					state->mb_buf = 0;
@@ -275,7 +275,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *state, uint8_t rxbyte)
 			// if last of the MB field
 			if (state->mb_cnt == checksum_length(state->rx_cksum_type)) {
 
-				if (cksum_verify(state->rx_cksum_type, &state->rx_crc_scratch, state->mb_buf)) {
+				if (cksum_verify(state->rx_cksum_type, &state->rx_cksum_scratch, state->mb_buf)) {
 					call_frame_rx_callback(state);
 				} else {
 					sbmp_error("Rx checksum mismatch!");
@@ -298,7 +298,7 @@ bool sbmp_frm_start(SBMP_FrmInst *state, SBMP_CksumType cksum_type, uint16_t len
 		return false;
 	}
 
-	if (state->tx_state != FRM_STATE_IDLE) {
+	if (state->tx_status != FRM_STATE_IDLE) {
 		sbmp_error("Can't tx, busy.");
 		return false;
 	}
@@ -317,7 +317,7 @@ bool sbmp_frm_start(SBMP_FrmInst *state, SBMP_CksumType cksum_type, uint16_t len
 
 	state->tx_cksum_type = cksum_type;
 	state->tx_remain = length;
-	state->tx_state = FRM_STATE_PAYLOAD;
+	state->tx_status = FRM_STATE_PAYLOAD;
 
 	// Send the header
 
@@ -338,7 +338,7 @@ bool sbmp_frm_start(SBMP_FrmInst *state, SBMP_CksumType cksum_type, uint16_t len
 
 	state->tx_func(hdr_xor);
 
-	cksum_begin(state->tx_cksum_type, &state->tx_crc_scratch);
+	cksum_begin(state->tx_cksum_type, &state->tx_cksum_scratch);
 
 	return true;
 }
@@ -346,9 +346,9 @@ bool sbmp_frm_start(SBMP_FrmInst *state, SBMP_CksumType cksum_type, uint16_t len
 /** End frame and enter idle mode */
 static void end_frame(SBMP_FrmInst *state)
 {
-	cksum_end(state->tx_cksum_type, &state->tx_crc_scratch);
+	cksum_end(state->tx_cksum_type, &state->tx_cksum_scratch);
 
-	uint32_t cksum = state->tx_crc_scratch;
+	uint32_t cksum = state->tx_cksum_scratch;
 
 	switch (state->tx_cksum_type) {
 		case SBMP_CKSUM_NONE:
@@ -366,7 +366,7 @@ static void end_frame(SBMP_FrmInst *state)
 			state->tx_func((cksum >> 24) & 0xFF);
 	}
 
-	state->tx_state = FRM_STATE_IDLE; // tx done
+	state->tx_status = FRM_STATE_IDLE; // tx done
 }
 
 /** Send a byte in the currently open frame */
@@ -377,12 +377,12 @@ bool sbmp_frm_send_byte(SBMP_FrmInst *state, uint8_t byte)
 		return false;
 	}
 
-	if (state->tx_remain == 0 || state->tx_state != FRM_STATE_PAYLOAD) {
+	if (state->tx_remain == 0 || state->tx_status != FRM_STATE_PAYLOAD) {
 		return false;
 	}
 
 	state->tx_func(byte);
-	cksum_update(state->tx_cksum_type, &state->tx_crc_scratch, byte);
+	cksum_update(state->tx_cksum_type, &state->tx_cksum_scratch, byte);
 	state->tx_remain--;
 
 	if (state->tx_remain == 0) {
@@ -400,7 +400,7 @@ uint16_t sbmp_frm_send_buffer(SBMP_FrmInst *state, const uint8_t *buffer, uint16
 		return false;
 	}
 
-	if (state->tx_state != FRM_STATE_PAYLOAD) {
+	if (state->tx_status != FRM_STATE_PAYLOAD) {
 		return false; // invalid call
 	}
 
@@ -414,7 +414,7 @@ uint16_t sbmp_frm_send_buffer(SBMP_FrmInst *state, const uint8_t *buffer, uint16
 	}
 
 	uint16_t remain = length;
-	while (state->tx_state == FRM_STATE_PAYLOAD && remain-- > 0) {
+	while (state->tx_status == FRM_STATE_PAYLOAD && remain-- > 0) {
 		if (! sbmp_frm_send_byte(state, *buffer++)) {
 			remain++; // "push back"
 			break;
