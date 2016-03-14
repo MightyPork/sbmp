@@ -1,3 +1,12 @@
+/*
+ * This is an example of using the framing and datagram layer of SBMP.
+ *
+ * The framing layer can be used on it's own to ensure data integrity.
+ *
+ * The datagram layer on it's own is pretty useless, to get all
+ * the benefits, use the session layer on top of it.
+ */
+
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
@@ -46,19 +55,19 @@ int main(void)
 
 	// --- Try sending & receiving a datagram --
 
-	anticipate_datagram = true;
+	for (int i = 0; i < 3; i++) {
+		anticipate_datagram = true;
 
-	// Start a frame + datagram
-	const int len = 10;
-	const int type = 100;
-	const int sess = 0;
-	sbmp_start_datagram(&sbmp, 32, sess, type, len);
-	// Send datagram payload
-	sbmp_send_buffer(&sbmp, (uint8_t*)"0123456789", len);
+		// Start a frame + datagram
+		const int len = 10;
+		const int type = 100;
+		const int sess = 0;
+		sbmp_start_datagram(&sbmp, 32, sess, type, len);
+		// Send datagram payload
+		sbmp_send_buffer(&sbmp, (uint8_t*)"0123456789", len);
 
-
-
-	printf("\n");
+		printf("\n");
+	}
 }
 
 
@@ -81,7 +90,7 @@ static void usart_tx_byte(uint8_t byte)
 */
 
 	// Send it back - as if we just received it.
-	SBMP_RxStatus status = sbmp_receive(&sbmp, byte);
+	SBMP_RxStatus status = sbmp_frm_receive(&sbmp, byte);
 
 	// TODO should check if the byte was accepted
 
@@ -131,18 +140,17 @@ static void frame_received(uint8_t *payload, uint16_t length, void *user_token)
 		printf("Received datagram type %d, session %d, length %d\n", dg.type, dg.session, dg.length);
 
 		for (size_t i = 0; i < dg.length; i++) {
-			printf("Rx : ");
-			print_char(dg.payload[i]);
+			printf("%c", dg.payload[i]);
 		}
+		printf("\n");
 
 	} else {
 
 		// main used the framing layer directly
-
 		for (size_t i = 0; i < length; i++) {
-			printf("Rx : ");
-			print_char(payload[i]);
+			printf("%c", payload[i]);
 		}
+		printf("\n");
 	}
 }
 

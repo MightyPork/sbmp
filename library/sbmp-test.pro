@@ -13,7 +13,8 @@ SOURCES += \
     sbmp/sbmp_frame.c \
     sbmp/sbmp_datagram.c \
     sbmp/sbmp_common.c \
-    sbmp/sbmp_session.c
+    sbmp/sbmp_session.c \
+    main_frm_dg.c
 
 HEADERS += \
     crc32.h \

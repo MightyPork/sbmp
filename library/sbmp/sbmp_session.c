@@ -42,6 +42,9 @@ SBMP_Endpoint *sbmp_ep_init(
 	// set up the framing layer
 	sbmp_frm_init(&ep->frm_state, buffer, buffer_size, ep_rx_handler, tx_func);
 
+	// set token, so callback knows what EP it's for.
+	sbmp_frm_set_user_token(&ep->frm_state, (void *) ep);
+
 	ep->next_session = 0;
 	ep->origin = 0;
 	ep->rx_handler = dg_rx_handler;
@@ -49,6 +52,7 @@ SBMP_Endpoint *sbmp_ep_init(
 	// init the handshake status
 	ep->hsk_session = 0;
 	ep->hsk_state = SBMP_HSK_NOT_STARTED;
+
 	ep->peer_buffer_size = 0xFFFF; // max possible buffer
 	ep->peer_preferred_cksum = SBMP_CKSUM_CRC32;
 	// our info for the peer
@@ -77,6 +81,12 @@ void sbmp_ep_set_origin(SBMP_Endpoint *endp, bool bit)
 void sbmp_ep_set_preferred_cksum(SBMP_Endpoint *endp, SBMP_ChecksumType cksum_type)
 {
 	endp->preferred_cksum = cksum_type;
+}
+
+/** Set frm enabled state */
+void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable)
+{
+	sbmp_frm_enable(&ep->frm_state, enable);
 }
 
 // ---
@@ -128,6 +138,12 @@ uint16_t sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t 
 	return sbmp_send_buffer(&ep->frm_state, buffer, length);
 }
 
+/** Rx, pass to framing layer */
+SBMP_RxStatus sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte)
+{
+	return sbmp_frm_receive(&ep->frm_state, byte);
+}
+
 
 // --- All-in-one send funcs ---
 
@@ -160,12 +176,23 @@ bool sbmp_ep_send_message(
 		uint16_t *sesn_ptr,
 		uint16_t *sent_bytes_ptr)
 {
-	uint16_t sn = next_session(ep);
+	// This juggling with session nr is because it wouldn't work
+	// without actual hardware delay otherwise.
+
+	uint16_t sn = next_session(ep);;
+
+	uint16_t old_sesn = 0;
+	if (sesn_ptr != NULL) {
+		old_sesn = *sesn_ptr;
+		*sesn_ptr = sn;
+	}
 
 	bool suc = sbmp_ep_send_response(ep, type, buffer, length, sn, sent_bytes_ptr);
 
-	if (suc) {
-		if (sesn_ptr != NULL) *sesn_ptr = sn;
+	if (!suc) {
+		if (sesn_ptr != NULL) {
+			*sesn_ptr = old_sesn; // restore
+		}
 	}
 
 	return suc;
@@ -213,15 +240,24 @@ bool sbmp_ep_start_handshake(SBMP_Endpoint *ep)
 	uint8_t buf[HSK_PAYLOAD_LEN];
 	populate_hsk_buf(ep, buf);
 
+	ep->hsk_state = SBMP_HSK_AWAIT_REPLY;
+
 	bool suc = sbmp_ep_send_message(ep, SBMP_DG_HSK_START, buf, 3, &ep->hsk_session, NULL);
 
-	if (suc) {
-		ep->hsk_state = SBMP_HSK_AWAIT_REPLY;
+	if (!suc) {
+		ep->hsk_state = SBMP_HSK_NOT_STARTED;
 	}
 
 	return suc;
 }
 
+/** Get hsk state */
+SBMP_HandshakeState sbmp_ep_handshake_status(SBMP_Endpoint *ep)
+{
+	return ep->hsk_state;
+}
+
+/** Handle incoming datagram, consume & deal with if handshake dg */
 static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 {
 	bool hsk_start = (dg->type == SBMP_DG_HSK_START);
@@ -232,6 +268,8 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 		// prepare payload to send in response
 		uint8_t our_info_pld[HSK_PAYLOAD_LEN];
 		populate_hsk_buf(ep, our_info_pld);
+
+		//printf("hsk_state = %d, hsk_ses %d, dg_ses %d\n",ep->hsk_state,  ep->hsk_session, dg->session);
 
 		if (hsk_start) {
 			// peer requests origin
@@ -265,6 +303,7 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 			if (ep->hsk_state != SBMP_HSK_AWAIT_REPLY || ep->hsk_session != dg->session) {
 				// but we didn't send any request
 				sbmp_error("Rx unexpected HSK accept, ignoring.");
+
 			} else {
 				// OK, we were waiting for this reply
 
@@ -297,3 +336,4 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 		ep->rx_handler(dg);
 	}
 }
+

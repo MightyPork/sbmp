@@ -46,6 +46,8 @@ SBMP_FrmState *sbmp_frm_init(
 	state->tx_lock_func = NULL;
 	state->tx_release_func = NULL;
 
+	state->enabled = false;
+
 	sbmp_frm_reset(state);
 
 	return state;
@@ -56,6 +58,18 @@ void sbmp_frm_reset(SBMP_FrmState *state)
 {
 	reset_rx_state(state);
 	reset_tx_state(state);
+}
+
+/** Enable or disable */
+void sbmp_frm_enable(SBMP_FrmState *state, bool enable)
+{
+	state->enabled = enable;
+}
+
+/** Set user token */
+void sbmp_frm_set_user_token(SBMP_FrmState *state, void *token)
+{
+	state->user_token = token;
 }
 
 /** Reset the receiver state  */
@@ -132,10 +146,14 @@ static void call_frame_rx_callback(SBMP_FrmState *state)
  *
  * @param state
  * @param rxbyte
- * @return true if the byte was consumed.
+ * @return status
  */
-SBMP_RxStatus sbmp_receive(SBMP_FrmState *state, uint8_t rxbyte)
+SBMP_RxStatus sbmp_frm_receive(SBMP_FrmState *state, uint8_t rxbyte)
 {
+	if (!state->enabled) {
+		return SBMP_RX_DISABLED;
+	}
+
 	SBMP_RxStatus retval = SBMP_RX_OK;
 
 	switch (state->rx_state) {
@@ -327,13 +345,18 @@ static uint32_t tx_cksum_end(SBMP_FrmState *state)
 
 bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16_t length)
 {
+	if (!state->enabled) {
+		sbmp_error("Can't tx, not enabled.");
+		return false;
+	}
+
 	if (state->tx_state != FRM_STATE_IDLE) {
-		sbmp_error("Tx busy.");
+		sbmp_error("Can't tx, busy.");
 		return false;
 	}
 
 	if (state->tx_func == NULL) {
-		sbmp_error("No tx func!");
+		sbmp_error("Can't tx, no tx func!");
 		return false;
 	}
 
@@ -394,6 +417,11 @@ static void end_frame(SBMP_FrmState *state)
 /** Send a byte in the currently open frame */
 bool sbmp_send_byte(SBMP_FrmState *state, uint8_t byte)
 {
+	if (!state->enabled) {
+		sbmp_error("Can't tx, not enabled.");
+		return false;
+	}
+
 	if (state->tx_remain == 0 || state->tx_state != FRM_STATE_PAYLOAD) {
 		return false;
 	}
@@ -412,6 +440,11 @@ bool sbmp_send_byte(SBMP_FrmState *state, uint8_t byte)
 /** Send a buffer in the currently open frame */
 uint16_t sbmp_send_buffer(SBMP_FrmState *state, const uint8_t *buffer, uint16_t length)
 {
+	if (!state->enabled) {
+		sbmp_error("Can't tx, not enabled.");
+		return false;
+	}
+
 	if (state->tx_state != FRM_STATE_PAYLOAD) {
 		return false; // invalid call
 	}

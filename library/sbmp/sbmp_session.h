@@ -8,12 +8,12 @@
 #include "sbmp_frame.h"
 #include "sbmp_datagram.h"
 
-enum SBMP_HandshakeState {
-	SBMP_HSK_NOT_STARTED,     /*!< Initial state, unconfigured */
-	SBMP_HSK_AWAIT_REPLY,     /*!< Request sent, awaiting a reply */
-	SBMP_HSK_CONFLICT,        /*!< Conflict occured during HSK */
-	SBMP_HSK_SUCCESS, /*!< Handshake done, origin assigned. */
-};
+typedef enum {
+	SBMP_HSK_NOT_STARTED = 0,     /*!< Initial state, unconfigured */
+	SBMP_HSK_SUCCESS = 1,         /*!< Handshake done, origin assigned. */
+	SBMP_HSK_AWAIT_REPLY = 2,     /*!< Request sent, awaiting a reply */
+	SBMP_HSK_CONFLICT = 3,        /*!< Conflict occured during HSK */
+} SBMP_HandshakeState;
 
 
 /** SBMP Endpoint (session)  structure */
@@ -26,7 +26,7 @@ typedef struct {
 	SBMP_FrmState frm_state;                /*!< Framing layer internal state */
 
 	// Handshake
-	enum SBMP_HandshakeState hsk_state;     /*!< Handshake progress */
+	SBMP_HandshakeState hsk_state;     /*!< Handshake progress */
 	uint16_t hsk_session;                   /*!< Session number of the handshake request message */
 	uint16_t peer_buffer_size;              /*!< Peer's buffer size (obtained during handshake) */
 	SBMP_ChecksumType peer_preferred_cksum; /*!< Peer's preferred checksum type */
@@ -129,10 +129,10 @@ bool sbmp_ep_send_response(
 /**
  * @brief Send a message in a new session.
  *
- * @param ep         : Endpoint struct
- * @param type       : Datagram type ID
- * @param buffer     : Buffer with data to send
- * @param length     : Datagram payload length (bytes)
+ * @param ep     : Endpoint struct
+ * @param type   : Datagram type ID
+ * @param buffer : Buffer with data to send
+ * @param length : Datagram payload length (bytes)
  * @param sesn_ptr       : Var to store session number. NULL = don't store.
  * @param sent_bytes_ptr : Var to store NR of sent bytes. NULL = don't store.
  * @return success
@@ -150,5 +150,19 @@ bool sbmp_ep_send_message(
  * @param ep : Endpoint struct
  */
 bool sbmp_ep_start_handshake(SBMP_Endpoint *ep);
+
+/**
+ * @brief Receive a byte from USART (is passed to the framing layer)
+ * @param ep   : Endpoint struct
+ * @param byte : Byte received from USART
+ * @return true if byte was consumed
+ */
+SBMP_RxStatus sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte);
+
+/** Get current handshake state */
+SBMP_HandshakeState sbmp_ep_handshake_status(SBMP_Endpoint *ep);
+
+/** Enable or disable the framing layer backing this EP */
+void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable);
 
 #endif /* SBMP_SESSION_H */

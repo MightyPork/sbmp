@@ -21,9 +21,10 @@ typedef enum {
  * Status returned from the byte rx function.
  */
 typedef enum {
-	SBMP_RX_OK,     /*!< Byte received */
-	SBMP_RX_BUSY,   /*!< SBMP busy with the last packet, try again */
-	SBMP_RX_INVALID /*!< The byte was rejected - can be ASCII debug, or just garbage. */
+	SBMP_RX_OK = 0,   /*!< Byte received */
+	SBMP_RX_BUSY,     /*!< SBMP busy with the last packet, try again */
+	SBMP_RX_INVALID,  /*!< The byte was rejected - can be ASCII debug, or just garbage. */
+	SBMP_RX_DISABLED, /*!< The byte was rejected, because the frame parser is not enabled yet. */
 } SBMP_RxStatus;
 
 /** SBMP internal state (context). Allows having multiple SBMP interfaces. */
@@ -62,18 +63,26 @@ SBMP_FrmState *sbmp_frm_init(
 void sbmp_frm_set_user_token(SBMP_FrmState *state, void *token);
 
 /**
- * @brief Reset the SBMP state, discard partial messages (both rx and tx).
+ * @brief Reset the SBMP frm state, discard partial messages (both rx and tx).
  * @param state : SBMP state struct
  */
 void sbmp_frm_reset(SBMP_FrmState *state);
+
+/**
+ * @brief Enable or disable the frame parser
+ * @param state : SBMP state struct
+ * @param bool  : true - enable, false - disable
+ */
+void sbmp_frm_enable(SBMP_FrmState *state, bool enable);
 
 /**
  * @brief Handle an incoming byte
  *
  * @param state  : SBMP state struct
  * @param rxbyte : byte received
+ * @return status
  */
-SBMP_RxStatus sbmp_receive(SBMP_FrmState *state, uint8_t rxbyte);
+SBMP_RxStatus sbmp_frm_receive(SBMP_FrmState *state, uint8_t rxbyte);
 
 /**
  * @brief Start a frame transmission
@@ -133,18 +142,20 @@ struct SBMP_FrmState_struct {
 
 	// --- reception ---
 
-	uint32_t mb_buf; /*!< Multi-byte value buffer */
+	uint32_t mb_buf;    /*!< Multi-byte value buffer */
 	uint8_t mb_cnt;
 
 	uint8_t rx_hdr_xor; /*!< Header xor scratch field */
 
 	enum SBMP_FrmParserState rx_state;
 
-	uint8_t *rx_buffer;   /*!< Incoming packet buffer */
+	bool enabled;       /*!< Frm enabled state. If disabled, all incoming bytes are rejected. */
+
+	uint8_t *rx_buffer;     /*!< Incoming packet buffer */
 	uint16_t rx_buffer_i;   /*!< Buffer cursor */
 	uint16_t rx_buffer_cap; /*!< Buffer capacity */
 
-	uint16_t rx_length; /*!< Total payload length */
+	uint16_t rx_length;     /*!< Total payload length */
 
 	SBMP_ChecksumType rx_cksum_type; /*!< Current packet's checksum type */
 
