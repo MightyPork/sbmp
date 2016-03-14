@@ -291,7 +291,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *state, uint8_t rxbyte)
 }
 
 /** Send a frame header */
-bool sbmp_frm_start(SBMP_FrmInst *state, SBMP_ChecksumType cksum_type, uint16_t length)
+bool sbmp_frm_start(SBMP_FrmInst *state, SBMP_CksumType cksum_type, uint16_t length)
 {
 	if (!state->enabled) {
 		sbmp_error("Can't tx, not enabled.");

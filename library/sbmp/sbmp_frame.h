@@ -92,7 +92,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *state, uint8_t rxbyte);
  * @param length : payload length
  * @return true if frame was started.
  */
-bool sbmp_frm_start(SBMP_FrmInst *state, SBMP_ChecksumType cksum_type, uint16_t length);
+bool sbmp_frm_start(SBMP_FrmInst *state, SBMP_CksumType cksum_type, uint16_t length);
 
 /**
  * @brief Send one byte in the open frame.
@@ -158,7 +158,7 @@ struct SBMP_FrmInstance_struct {
 
 	uint16_t rx_length;     /*!< Total payload length */
 
-	SBMP_ChecksumType rx_cksum_type; /*!< Current packet's checksum type */
+	SBMP_CksumType rx_cksum_type; /*!< Current packet's checksum type */
 
 	uint32_t rx_crc_scratch; /*!< crc aggregation field for received data */
 
@@ -170,7 +170,7 @@ struct SBMP_FrmInstance_struct {
 	// --- transmission ---
 
 	uint16_t tx_remain; /*!< Number of remaining bytes to transmit */
-	SBMP_ChecksumType tx_cksum_type;
+	SBMP_CksumType tx_cksum_type;
 	uint32_t tx_crc_scratch; /*!< crc aggregation field for transmit */
 	enum SBMP_FrmStatus tx_state;
 

@@ -43,11 +43,11 @@ typedef struct {
 	SBMP_HandshakeState hsk_state;     /*!< Handshake progress */
 	uint16_t hsk_session;                   /*!< Session number of the handshake request message */
 	uint16_t peer_buffer_size;              /*!< Peer's buffer size (obtained during handshake) */
-	SBMP_ChecksumType peer_preferred_cksum; /*!< Peer's preferred checksum type */
+	SBMP_CksumType peer_preferred_cksum; /*!< Peer's preferred checksum type */
 
 	// Our info for the peer
 	uint16_t buffer_size;                   /*!< Our buffer size */
-	SBMP_ChecksumType preferred_cksum;      /*!< Our preferred checksum */
+	SBMP_CksumType preferred_cksum;      /*!< Our preferred checksum */
 } SBMP_Endpoint;
 
 
@@ -78,7 +78,7 @@ void sbmp_ep_seed_session(SBMP_Endpoint *ep, uint16_t sesn);
 void sbmp_ep_set_origin(SBMP_Endpoint *endp, bool bit);
 
 /** Set the preferred checksum for this peer. */
-void sbmp_ep_set_preferred_cksum(SBMP_Endpoint *endp, SBMP_ChecksumType cksum_type);
+void sbmp_ep_set_preferred_cksum(SBMP_Endpoint *endp, SBMP_CksumType cksum_type);
 
 /**
  * @brief Start a message as a reply, with CRC32

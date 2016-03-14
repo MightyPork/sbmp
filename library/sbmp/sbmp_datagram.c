@@ -33,7 +33,7 @@ SBMP_Datagram *sbmp_parse_datagram(SBMP_Datagram *dg, const uint8_t *payload, ui
 
 
 /** Start a datagram transmission */
-bool sbmp_start_datagram(SBMP_FrmInst *state, SBMP_ChecksumType cksum_type, uint16_t session, SBMP_DgType type, uint16_t length)
+bool sbmp_start_datagram(SBMP_FrmInst *state, SBMP_CksumType cksum_type, uint16_t session, SBMP_DgType type, uint16_t length)
 {
 	if (length > (0xFFFF - 3)) {
 		sbmp_error("Can't send a datagram, payload too long.");
@@ -56,7 +56,7 @@ bool sbmp_start_datagram(SBMP_FrmInst *state, SBMP_ChecksumType cksum_type, uint
 
 
 /** Send a whole datagram in one go */
-bool sbmp_send_datagram(SBMP_FrmInst *state, SBMP_ChecksumType cksum_type, SBMP_Datagram *dg)
+bool sbmp_send_datagram(SBMP_FrmInst *state, SBMP_CksumType cksum_type, SBMP_Datagram *dg)
 {
 	if (! sbmp_start_datagram(state, cksum_type, dg->session, dg->type, dg->length)) {
 		sbmp_error("Failed to start datagram.");

@@ -99,7 +99,7 @@ void sbmp_ep_set_origin(SBMP_Endpoint *endp, bool bit)
 }
 
 /** Set the preferred checksum. */
-void sbmp_ep_set_preferred_cksum(SBMP_Endpoint *endp, SBMP_ChecksumType cksum_type)
+void sbmp_ep_set_preferred_cksum(SBMP_Endpoint *endp, SBMP_CksumType cksum_type)
 {
 	if (cksum_type == SBMP_CKSUM_CRC32 && !SBMP_HAS_CRC32) {
 		sbmp_error("CRC32 not avail, using XOR instead.");
