@@ -33,7 +33,7 @@ SBMP_Datagram *sbmp_parse_datagram(SBMP_Datagram *dg, const uint8_t *payload, ui
 
 
 /** Start a datagram transmission */
-bool sbmp_start_datagram(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16_t session, SBMP_DgType type, uint16_t length)
+bool sbmp_start_datagram(SBMP_FrmInst *state, SBMP_ChecksumType cksum_type, uint16_t session, SBMP_DgType type, uint16_t length)
 {
 	if (length > (0xFFFF - 3)) {
 		sbmp_error("Can't send a datagram, payload too long.");
@@ -45,24 +45,24 @@ bool sbmp_start_datagram(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uin
 		return false;
 	}
 
-	if (! sbmp_start_frame(state, cksum_type, length + 3)) return false;
+	if (! sbmp_frm_start(state, cksum_type, length + 3)) return false;
 
-	sbmp_send_byte(state, session & 0xFF);
-	sbmp_send_byte(state, (session >> 8) & 0xFF);
-	sbmp_send_byte(state, type);
+	sbmp_frm_send_byte(state, session & 0xFF);
+	sbmp_frm_send_byte(state, (session >> 8) & 0xFF);
+	sbmp_frm_send_byte(state, type);
 
 	return true;
 }
 
 
 /** Send a whole datagram in one go */
-bool sbmp_send_datagram(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, SBMP_Datagram *dg)
+bool sbmp_send_datagram(SBMP_FrmInst *state, SBMP_ChecksumType cksum_type, SBMP_Datagram *dg)
 {
 	if (! sbmp_start_datagram(state, cksum_type, dg->session, dg->type, dg->length)) {
 		sbmp_error("Failed to start datagram.");
 		return false;
 	}
 
-	size_t n = sbmp_send_buffer(state, dg->payload, dg->length);
+	size_t n = sbmp_frm_send_buffer(state, dg->payload, dg->length);
 	return (n == dg->length);
 }

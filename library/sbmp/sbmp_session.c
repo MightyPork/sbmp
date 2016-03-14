@@ -160,13 +160,13 @@ bool sbmp_ep_start_session(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length,
 /** Send one byte in the current message */
 bool sbmp_ep_send_byte(SBMP_Endpoint *ep, uint8_t byte)
 {
-	return sbmp_send_byte(&ep->frm_state, byte);
+	return sbmp_frm_send_byte(&ep->frm_state, byte);
 }
 
 /** Send a data buffer (or a part) in the current message */
 uint16_t sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t length)
 {
-	return sbmp_send_buffer(&ep->frm_state, buffer, length);
+	return sbmp_frm_send_buffer(&ep->frm_state, buffer, length);
 }
 
 /** Rx, pass to framing layer */

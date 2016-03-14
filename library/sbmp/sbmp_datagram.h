@@ -55,7 +55,7 @@ SBMP_Datagram *sbmp_parse_datagram(SBMP_Datagram *dg_or_null, const uint8_t *fra
  * @param length     : Datagram payload length (bytes)
  * @return success
  */
-bool sbmp_start_datagram(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16_t session, SBMP_DgType type, uint16_t length);
+bool sbmp_start_datagram(SBMP_FrmInst *state, SBMP_ChecksumType cksum_type, uint16_t session, SBMP_DgType type, uint16_t length);
 
 /**
  * @brief Send a complete prepared datagram, also starts the frame.
@@ -65,7 +65,7 @@ bool sbmp_start_datagram(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uin
  * @param dg         : Datagram struct containing DG settings and the payload.
  * @return success
  */
-bool sbmp_send_datagram(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, SBMP_Datagram *dg);
+bool sbmp_send_datagram(SBMP_FrmInst *state, SBMP_ChecksumType cksum_type, SBMP_Datagram *dg);
 
 
 #endif /* SBMP_DATAGRAM_H */

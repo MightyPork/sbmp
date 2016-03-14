@@ -28,7 +28,7 @@ typedef enum {
 } SBMP_RxStatus;
 
 /** SBMP internal state (context). Allows having multiple SBMP interfaces. */
-typedef struct SBMP_FrmState_struct SBMP_FrmState;
+typedef struct SBMP_FrmInstance_struct SBMP_FrmInst;
 
 
 /**
@@ -41,8 +41,8 @@ typedef struct SBMP_FrmState_struct SBMP_FrmState;
  * @param tx_func     : function for sending bytes (USART Tx)
  * @return pointer to the state struct (passed or allocated)
  */
-SBMP_FrmState *sbmp_frm_init(
-		SBMP_FrmState *state_or_null,
+SBMP_FrmInst *sbmp_frm_init(
+		SBMP_FrmInst *state_or_null,
 		uint8_t *buffer_or_null,
 		uint16_t buffer_size,
 		void (*rx_handler)(uint8_t *payload, uint16_t length, void *user_token),
@@ -60,20 +60,20 @@ SBMP_FrmState *sbmp_frm_init(
  * @param state : SBMP state struct
  * @param token : pointer to arbitrary object.
  */
-void sbmp_frm_set_user_token(SBMP_FrmState *state, void *token);
+void sbmp_frm_set_user_token(SBMP_FrmInst *state, void *token);
 
 /**
  * @brief Reset the SBMP frm state, discard partial messages (both rx and tx).
  * @param state : SBMP state struct
  */
-void sbmp_frm_reset(SBMP_FrmState *state);
+void sbmp_frm_reset(SBMP_FrmInst *state);
 
 /**
  * @brief Enable or disable the frame parser
  * @param state : SBMP state struct
  * @param bool  : true - enable, false - disable
  */
-void sbmp_frm_enable(SBMP_FrmState *state, bool enable);
+void sbmp_frm_enable(SBMP_FrmInst *state, bool enable);
 
 /**
  * @brief Handle an incoming byte
@@ -82,7 +82,7 @@ void sbmp_frm_enable(SBMP_FrmState *state, bool enable);
  * @param rxbyte : byte received
  * @return status
  */
-SBMP_RxStatus sbmp_frm_receive(SBMP_FrmState *state, uint8_t rxbyte);
+SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *state, uint8_t rxbyte);
 
 /**
  * @brief Start a frame transmission
@@ -92,7 +92,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmState *state, uint8_t rxbyte);
  * @param length : payload length
  * @return true if frame was started.
  */
-bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16_t length);
+bool sbmp_frm_start(SBMP_FrmInst *state, SBMP_ChecksumType cksum_type, uint16_t length);
 
 /**
  * @brief Send one byte in the open frame.
@@ -104,7 +104,7 @@ bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16
  * @param byte  : byte to send
  * @return true on success (value did fit in a frame)
  */
-bool sbmp_send_byte(SBMP_FrmState *state, uint8_t byte);
+bool sbmp_frm_send_byte(SBMP_FrmInst *state, uint8_t byte);
 
 /**
  * @brief Send a data buffer (or a part).
@@ -117,14 +117,14 @@ bool sbmp_send_byte(SBMP_FrmState *state, uint8_t byte);
  * @param length : buffer length (byte count)
  * @return actual sent length (until payload is full)
  */
-uint16_t sbmp_send_buffer(SBMP_FrmState *state, const uint8_t *buffer, uint16_t length);
+uint16_t sbmp_frm_send_buffer(SBMP_FrmInst *state, const uint8_t *buffer, uint16_t length);
 
 
 
 // ---- Internal frame struct ------------------------
 
 /** SBMP framing layer Rx / Tx state */
-enum SBMP_FrmParserState {
+enum SBMP_FrmStatus {
 	FRM_STATE_IDLE,         /*!< Ready to start/accept a frame */
 	FRM_STATE_CKSUM_TYPE,   /*!< Rx, waiting for checksum type (1 byte) */
 	FRM_STATE_LENGTH,       /*!< Rx, waiting for payload length (2 bytes) */
@@ -139,7 +139,7 @@ enum SBMP_FrmParserState {
  * Internal state of the SBMP node
  * Placed in the header to allow static allocation.
  */
-struct SBMP_FrmState_struct {
+struct SBMP_FrmInstance_struct {
 
 	// --- reception ---
 
@@ -148,7 +148,7 @@ struct SBMP_FrmState_struct {
 
 	uint8_t rx_hdr_xor; /*!< Header xor scratch field */
 
-	enum SBMP_FrmParserState rx_state;
+	enum SBMP_FrmStatus rx_state;
 
 	bool enabled;       /*!< Frm enabled state. If disabled, all incoming bytes are rejected. */
 
@@ -172,7 +172,7 @@ struct SBMP_FrmState_struct {
 	uint16_t tx_remain; /*!< Number of remaining bytes to transmit */
 	SBMP_ChecksumType tx_cksum_type;
 	uint32_t tx_crc_scratch; /*!< crc aggregation field for transmit */
-	enum SBMP_FrmParserState tx_state;
+	enum SBMP_FrmStatus tx_state;
 
 	// output functions. Only tx_func is needed.
 	void (*tx_func)(uint8_t byte);  /*!< Function to send one byte */

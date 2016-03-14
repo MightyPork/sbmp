@@ -37,7 +37,7 @@ typedef struct {
 
 	void (*rx_handler)(SBMP_Datagram *dg);  /*!< Datagram receive handler */
 
-	SBMP_FrmState frm_state;                /*!< Framing layer internal state */
+	SBMP_FrmInst frm_state;                /*!< Framing layer internal state */
 
 	// Handshake
 	SBMP_HandshakeState hsk_state;     /*!< Handshake progress */

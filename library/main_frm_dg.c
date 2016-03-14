@@ -22,7 +22,7 @@ static void usart_tx_byte(uint8_t byte);
 
 // SBMP instance
 static uint8_t sbmp_buf[100];
-static SBMP_FrmState sbmp;
+static SBMP_FrmInst sbmp;
 
 
 /** To test the DG decoder func - set in main() before sending a datagram frame */
@@ -43,9 +43,9 @@ int main(void)
 	// --- Using the framing layer directly ---
 
 	// Start a frame
-	sbmp_start_frame(&sbmp, 32, 11);
+	sbmp_frm_start(&sbmp, 32, 11);
 	// Send frame data
-	uint16_t sent = sbmp_send_buffer(&sbmp, (uint8_t*)"HELLO WORLDasdf", 15);
+	uint16_t sent = sbmp_frm_send_buffer(&sbmp, (uint8_t*)"HELLO WORLDasdf", 15);
 	// (will send only what fits in the frame)
 	printf("Sent %d bytes.\n", sent);
 
@@ -64,7 +64,7 @@ int main(void)
 		const int sess = 0;
 		sbmp_start_datagram(&sbmp, 32, sess, type, len);
 		// Send datagram payload
-		sbmp_send_buffer(&sbmp, (uint8_t*)"0123456789", len);
+		sbmp_frm_send_buffer(&sbmp, (uint8_t*)"0123456789", len);
 
 		printf("\n");
 	}

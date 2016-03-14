@@ -9,14 +9,14 @@
 #include "sbmp_frame.h"
 
 // protos
-static void reset_rx_state(SBMP_FrmState *state);
-static void reset_tx_state(SBMP_FrmState *state);
-static void call_frame_rx_callback(SBMP_FrmState *state);
+static void reset_rx_state(SBMP_FrmInst *state);
+static void reset_tx_state(SBMP_FrmInst *state);
+static void call_frame_rx_callback(SBMP_FrmInst *state);
 
 
 /** Allocate the state struct & init all fields */
-SBMP_FrmState *sbmp_frm_init(
-	SBMP_FrmState *state,
+SBMP_FrmInst *sbmp_frm_init(
+	SBMP_FrmInst *state,
 	uint8_t *buffer, uint16_t buffer_size,
 	void (*rx_handler)(uint8_t *, uint16_t, void *),
 	void (*tx_func)(uint8_t))
@@ -26,7 +26,7 @@ SBMP_FrmState *sbmp_frm_init(
 
 	if (state == NULL) {
 		// caller wants us to allocate it
-		state = malloc(sizeof(SBMP_FrmState));
+		state = malloc(sizeof(SBMP_FrmInst));
 	}
 
 	if (buffer == NULL) {
@@ -59,26 +59,26 @@ SBMP_FrmState *sbmp_frm_init(
 }
 
 /** Reset the internal state */
-void sbmp_frm_reset(SBMP_FrmState *state)
+void sbmp_frm_reset(SBMP_FrmInst *state)
 {
 	reset_rx_state(state);
 	reset_tx_state(state);
 }
 
 /** Enable or disable */
-void sbmp_frm_enable(SBMP_FrmState *state, bool enable)
+void sbmp_frm_enable(SBMP_FrmInst *state, bool enable)
 {
 	state->enabled = enable;
 }
 
 /** Set user token */
-void sbmp_frm_set_user_token(SBMP_FrmState *state, void *token)
+void sbmp_frm_set_user_token(SBMP_FrmInst *state, void *token)
 {
 	state->user_token = token;
 }
 
 /** Reset the receiver state  */
-static void reset_rx_state(SBMP_FrmState *state)
+static void reset_rx_state(SBMP_FrmInst *state)
 {
 	state->rx_buffer_i = 0;
 	state->rx_length = 0;
@@ -92,7 +92,7 @@ static void reset_rx_state(SBMP_FrmState *state)
 }
 
 /** Reset the transmitter state */
-static void reset_tx_state(SBMP_FrmState *state)
+static void reset_tx_state(SBMP_FrmInst *state)
 {
 	state->tx_state = FRM_STATE_IDLE;
 	state->tx_remain = 0;
@@ -103,21 +103,21 @@ static void reset_tx_state(SBMP_FrmState *state)
 
 /** Update a header XOR */
 static inline
-void hdrxor_update(SBMP_FrmState *state, uint8_t rxbyte)
+void hdrxor_update(SBMP_FrmInst *state, uint8_t rxbyte)
 {
 	state->rx_hdr_xor ^= rxbyte;
 }
 
 /** Check header xor against received value */
 static inline
-bool hdrxor_verify(SBMP_FrmState *state, uint8_t rx_xor)
+bool hdrxor_verify(SBMP_FrmInst *state, uint8_t rx_xor)
 {
 	return state->rx_hdr_xor == rx_xor;
 }
 
 /** Append a byte to the rx buffer */
 static inline
-void append_rx_byte(SBMP_FrmState *state, uint8_t b)
+void append_rx_byte(SBMP_FrmInst *state, uint8_t b)
 {
 	state->rx_buffer[state->rx_buffer_i++] = b;
 }
@@ -133,7 +133,7 @@ void set_byte(uint32_t *acc, uint8_t pos, uint8_t byte)
  * Call the message handler with the payload.
  *
  */
-static void call_frame_rx_callback(SBMP_FrmState *state)
+static void call_frame_rx_callback(SBMP_FrmInst *state)
 {
 	if (state->rx_handler == NULL) {
 		sbmp_error("frame_handler is null!");
@@ -153,7 +153,7 @@ static void call_frame_rx_callback(SBMP_FrmState *state)
  * @param rxbyte
  * @return status
  */
-SBMP_RxStatus sbmp_frm_receive(SBMP_FrmState *state, uint8_t rxbyte)
+SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *state, uint8_t rxbyte)
 {
 	if (!state->enabled) {
 		return SBMP_RX_DISABLED;
@@ -291,7 +291,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmState *state, uint8_t rxbyte)
 }
 
 /** Send a frame header */
-bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16_t length)
+bool sbmp_frm_start(SBMP_FrmInst *state, SBMP_ChecksumType cksum_type, uint16_t length)
 {
 	if (!state->enabled) {
 		sbmp_error("Can't tx, not enabled.");
@@ -344,7 +344,7 @@ bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16
 }
 
 /** End frame and enter idle mode */
-static void end_frame(SBMP_FrmState *state)
+static void end_frame(SBMP_FrmInst *state)
 {
 	cksum_end(state->tx_cksum_type, &state->tx_crc_scratch);
 
@@ -370,7 +370,7 @@ static void end_frame(SBMP_FrmState *state)
 }
 
 /** Send a byte in the currently open frame */
-bool sbmp_send_byte(SBMP_FrmState *state, uint8_t byte)
+bool sbmp_frm_send_byte(SBMP_FrmInst *state, uint8_t byte)
 {
 	if (!state->enabled) {
 		sbmp_error("Can't tx, not enabled.");
@@ -393,7 +393,7 @@ bool sbmp_send_byte(SBMP_FrmState *state, uint8_t byte)
 }
 
 /** Send a buffer in the currently open frame */
-uint16_t sbmp_send_buffer(SBMP_FrmState *state, const uint8_t *buffer, uint16_t length)
+uint16_t sbmp_frm_send_buffer(SBMP_FrmInst *state, const uint8_t *buffer, uint16_t length)
 {
 	if (!state->enabled) {
 		sbmp_error("Can't tx, not enabled.");
@@ -415,7 +415,7 @@ uint16_t sbmp_send_buffer(SBMP_FrmState *state, const uint8_t *buffer, uint16_t 
 
 	uint16_t remain = length;
 	while (state->tx_state == FRM_STATE_PAYLOAD && remain-- > 0) {
-		if (! sbmp_send_byte(state, *buffer++)) {
+		if (! sbmp_frm_send_byte(state, *buffer++)) {
 			remain++; // "push back"
 			break;
 		}
