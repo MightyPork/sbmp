@@ -52,3 +52,5 @@ application - the encoding is by definition application-specific, choose what fi
 
 It is also possible to send arbitrary **structs** using the protocol, but care must be taken so that
 both parties use the same struct padding and packing options.
+
+*End of file.*
