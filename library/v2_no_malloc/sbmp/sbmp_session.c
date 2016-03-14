@@ -4,8 +4,9 @@ static void rx_handler(uint8_t *buf, uint16_t len, void *token)
 {
 	// endpoint pointer is stored in the user token
 	SBMP_Endpoint *ep = (SBMP_Endpoint *)token;
-	SBMP_Datagram *dg = sbmp_parse_datagram(&ep->static_dg, buf, len);
-	ep->rx_handler(dg);
+
+	SBMP_Datagram dg;
+	ep->rx_handler(sbmp_parse_datagram(&dg, buf, len));
 }
 
 /**

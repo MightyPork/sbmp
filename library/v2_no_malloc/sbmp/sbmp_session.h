@@ -16,7 +16,6 @@ typedef struct {
 	void (*rx_handler)(SBMP_Datagram *dg); /*!< Datagram receive handler */
 
 	SBMP_FrmState frm_state;  /*!< Framing layer internal state */
-	SBMP_Datagram static_dg;  /*!< Datagram instance used for parsing frames */
 } SBMP_Endpoint;
 
 
@@ -26,6 +25,8 @@ typedef struct {
  * @param ep          : Endpoint var pointer, or NULL to allocate one.
  * @param buffer      : Rx buffer. NULL to allocate one.
  * @param buffer_size : Rx buffer length
+ * @param dg_rx_handler : Datagram received handler - the argument structure is valid ONLY within the function!
+ * @param tx_func     : Function to send a byte to USART
  * @return the endpoint struct pointer (allocated if ep was NULL)
  */
 SBMP_Endpoint *sbmp_ep_init(SBMP_Endpoint *ep,
