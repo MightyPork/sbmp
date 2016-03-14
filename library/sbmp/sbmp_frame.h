@@ -34,7 +34,7 @@ typedef struct SBMP_FrmInstance_struct SBMP_FrmInst;
 /**
  * @brief Initialize the SBMP internal state struct
  *
- * @param state       : Pointer to the state struct to populate. NULL to allocate.
+ * @param frm         : Pointer to the state struct to populate. NULL to allocate.
  * @param buffer      : Buffer for Rx. NULL to allocate.
  * @param buffer_size : size of the Rx buffer (or how many bytes to allocate)
  * @param rx_handler  : callback when frame is received
@@ -42,11 +42,11 @@ typedef struct SBMP_FrmInstance_struct SBMP_FrmInst;
  * @return pointer to the state struct (passed or allocated)
  */
 SBMP_FrmInst *sbmp_frm_init(
-		SBMP_FrmInst *frm_or_null,
-		uint8_t *buffer_or_null,
-		uint16_t buffer_size,
-		void (*rx_handler)(uint8_t *payload, uint16_t length, void *user_token),
-		void (*tx_func)(uint8_t byte)
+	SBMP_FrmInst *frm_or_null,
+	uint8_t *buffer_or_null,
+	uint16_t buffer_size,
+	void (*rx_handler)(uint8_t *payload, uint16_t length, void *user_token),
+	void (*tx_func)(uint8_t byte)
 );
 
 /**
@@ -57,28 +57,48 @@ SBMP_FrmInst *sbmp_frm_init(
  *
  * If the token is not set, NULL will be used in the callback.
  *
- * @param state : SBMP state struct
+ * @param frm   : Framing layer instance
  * @param token : pointer to arbitrary object.
  */
 void sbmp_frm_set_user_token(SBMP_FrmInst *frm, void *token);
 
 /**
  * @brief Reset the SBMP frm state, discard partial messages (both rx and tx).
- * @param state : SBMP state struct
+ * @param frm : Framing layer instance
  */
 void sbmp_frm_reset(SBMP_FrmInst *frm);
 
+/** Reset the receiver state only  */
+void sbmp_frm_reset_rx(SBMP_FrmInst *frm);
+
+/** Reset the transmitter state only */
+void sbmp_frm_reset_tx(SBMP_FrmInst *frm);
+
 /**
- * @brief Enable or disable the frame parser
- * @param state : SBMP state struct
- * @param bool  : true - enable, false - disable
+ * @brief Enable or disable both Rx and Tx
+ * @param frm    : Framing layer instance
+ * @param enable : true - enable, false - disable
  */
 void sbmp_frm_enable(SBMP_FrmInst *frm, bool enable);
 
 /**
+ * @brief Enable or disable Rx & the frame parser
+ * @param frm       : Framing layer instance
+ * @param enable_rx : true - enable, false - disable
+ */
+void sbmp_frm_enable_rx(SBMP_FrmInst *frm, bool enable_rx);
+
+/**
+ * @brief Enable or disable the frame builder & Tx
+ * @param frm       : Framing layer instance
+ * @param enable_tx : true - enable, false - disable
+ */
+void sbmp_frm_enable_tx(SBMP_FrmInst *frm, bool enable_tx);
+
+/**
  * @brief Handle an incoming byte
  *
- * @param state  : SBMP state struct
+ * @param frm  : Framing layer instance
  * @param rxbyte : byte received
  * @return status
  */
@@ -87,9 +107,9 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *frm, uint8_t rxbyte);
 /**
  * @brief Start a frame transmission
  *
- * @param state : SBMP state struct
+ * @param frm        : Framing layer instance
  * @param cksum_type : checksum to use (0, 32)
- * @param length : payload length
+ * @param length     : payload length
  * @return true if frame was started.
  */
 bool sbmp_frm_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t length);
@@ -100,7 +120,7 @@ bool sbmp_frm_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t lengt
  * If the payload was completed, checksum is be added and
  * the frame is closed.
  *
- * @param state : SBMP state struct
+ * @param frm   : Framing layer instance
  * @param byte  : byte to send
  * @return true on success (value did fit in a frame)
  */
@@ -112,7 +132,7 @@ bool sbmp_frm_send_byte(SBMP_FrmInst *frm, uint8_t byte);
  * If the payload was completed, checksum is be added and
  * the frame is closed.
  *
- * @param state  : SBMP state struct
+ * @param frm    : Framing layer instance
  * @param buffer : buffer of bytes to send
  * @param length : buffer length (byte count)
  * @return actual sent length (until payload is full)
@@ -150,7 +170,8 @@ struct SBMP_FrmInstance_struct {
 
 	enum SBMP_FrmStatus rx_status;
 
-	bool enabled;       /*!< Frm enabled state. If disabled, all incoming bytes are rejected. */
+	bool rx_enabled;       /*!< Enable Rx. Disabled -> reject incoming bytes. */
+	bool tx_enabled;       /*!< Enable Rx. Disabled -> reject incoming bytes. */
 
 	uint8_t *rx_buffer;     /*!< Incoming packet buffer */
 	uint16_t rx_buffer_i;   /*!< Buffer cursor */

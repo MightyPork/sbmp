@@ -21,12 +21,11 @@ static void ep_rx_handler(uint8_t *buf, uint16_t len, void *token)
 	// endpoint pointer is stored in the user token
 	SBMP_Endpoint *ep = (SBMP_Endpoint *)token;
 
-	SBMP_Datagram dg;
-	if (NULL != sbmp_dg_parse(&dg, buf, len)) {
+	if (NULL != sbmp_dg_parse(&ep->static_dg, buf, len)) {
 		// payload parsed OK
 
 		// check if handshake datagram, else call user callback.
-		handle_hsk_datagram(ep, &dg);
+		handle_hsk_datagram(ep, &ep->static_dg);
 	}
 }
 
@@ -55,22 +54,13 @@ SBMP_Endpoint *sbmp_ep_init(
 	}
 
 	// set up the framing layer
-	sbmp_frm_init(&ep->frm_state, buffer, buffer_size, ep_rx_handler, tx_func);
+	sbmp_frm_init(&ep->frm, buffer, buffer_size, ep_rx_handler, tx_func);
 
 	// set token, so callback knows what EP it's for.
-	sbmp_frm_set_user_token(&ep->frm_state, (void *) ep);
+	sbmp_frm_set_user_token(&ep->frm, (void *) ep);
 
-	ep->next_session = 0;
-	ep->origin = 0;
 	ep->rx_handler = dg_rx_handler;
-
-	// init the handshake status
-	ep->hsk_session = 0;
-	ep->hsk_state = SBMP_HSK_NOT_STARTED;
-
-	ep->peer_buffer_size = 0xFFFF; // max possible buffer
-	// our info for the peer
-	ep->buffer_size = buffer_size;
+	ep->buffer_size = buffer_size; // sent to the peer
 
 #if SBMP_HAS_CRC32
 	ep->peer_pref_cksum = SBMP_CKSUM_CRC32;
@@ -80,7 +70,31 @@ SBMP_Endpoint *sbmp_ep_init(
 	ep->preferred_cksum = SBMP_CKSUM_XOR;
 #endif
 
+	// reset state information
+	sbmp_ep_reset(ep);
+
 	return ep;
+}
+
+/**
+ * @brief Reset an endpoint and it's Framing Layer
+ *
+ * This discards all state information.
+ *
+ * @param ep : Endpoint
+ */
+void sbmp_ep_reset(SBMP_Endpoint *ep)
+{
+	ep->next_session = 0;
+	ep->origin = 0;
+
+	// init the handshake status
+	ep->hsk_session = 0;
+	ep->hsk_state = SBMP_HSK_NOT_STARTED;
+
+	ep->peer_buffer_size = 0xFFFF; // max possible buffer
+
+	sbmp_frm_reset(&ep->frm);
 }
 
 
@@ -109,10 +123,23 @@ void sbmp_ep_set_preferred_cksum(SBMP_Endpoint *endp, SBMP_CksumType cksum_type)
 	endp->pref_cksum = cksum_type;
 }
 
-/** Set frm enabled state */
+
+/** Enable or disable RX in the FrmInst backing this Endpoint */
+void sbmp_ep_enable_rx(SBMP_Endpoint *ep, bool enable_rx)
+{
+	sbmp_frm_enable_rx(&ep->frm, enable_rx);
+}
+
+/** Enable or disable TX in the FrmInst backing this Endpoint */
+void sbmp_ep_enable_tx(SBMP_Endpoint *ep, bool enable_tx)
+{
+	sbmp_frm_enable_tx(&ep->frm, enable_tx);
+}
+
+/** Enable or disable Rx & TX in the FrmInst backing this Endpoint */
 void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable)
 {
-	sbmp_frm_enable(&ep->frm_state, enable);
+	sbmp_frm_enable(&ep->frm, enable);
 }
 
 // ---
@@ -141,7 +168,7 @@ bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length
 		return false;
 	}
 
-	return sbmp_dg_start(&ep->frm_state, ep->peer_pref_cksum, sesn, type, length);
+	return sbmp_dg_start(&ep->frm, ep->peer_pref_cksum, sesn, type, length);
 }
 
 /** Start a message in a new session */
@@ -160,19 +187,19 @@ bool sbmp_ep_start_session(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length,
 /** Send one byte in the current message */
 bool sbmp_ep_send_byte(SBMP_Endpoint *ep, uint8_t byte)
 {
-	return sbmp_frm_send_byte(&ep->frm_state, byte);
+	return sbmp_frm_send_byte(&ep->frm, byte);
 }
 
 /** Send a data buffer (or a part) in the current message */
 uint16_t sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t length)
 {
-	return sbmp_frm_send_buffer(&ep->frm_state, buffer, length);
+	return sbmp_frm_send_buffer(&ep->frm, buffer, length);
 }
 
 /** Rx, pass to framing layer */
 SBMP_RxStatus sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte)
 {
-	return sbmp_frm_receive(&ep->frm_state, byte);
+	return sbmp_frm_receive(&ep->frm, byte);
 }
 
 
@@ -371,7 +398,7 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 				// Acknowledge the conflict
 
 				// reset everything
-				sbmp_frm_reset(&ep->frm_state);
+				sbmp_frm_reset(&ep->frm);
 
 				ep->hsk_state = SBMP_HSK_CONFLICT;
 			}

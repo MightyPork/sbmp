@@ -9,8 +9,6 @@
 #include "sbmp_frame.h"
 
 // protos
-static void reset_rx_state(SBMP_FrmInst *frm);
-static void reset_tx_state(SBMP_FrmInst *frm);
 static void call_frame_rx_callback(SBMP_FrmInst *frm);
 
 
@@ -52,7 +50,8 @@ SBMP_FrmInst *sbmp_frm_init(
 
 	frm->tx_func = tx_func;
 
-	frm->enabled = false;
+	frm->rx_enabled = false;
+	frm->tx_enabled = false;
 
 	sbmp_frm_reset(frm);
 
@@ -62,14 +61,27 @@ SBMP_FrmInst *sbmp_frm_init(
 /** Reset the internal state */
 void sbmp_frm_reset(SBMP_FrmInst *frm)
 {
-	reset_rx_state(frm);
-	reset_tx_state(frm);
+	sbmp_frm_reset_rx(frm);
+	sbmp_frm_reset_tx(frm);
 }
 
-/** Enable or disable */
+/** Enable or disable Rx */
+void sbmp_frm_enable_rx(SBMP_FrmInst *frm, bool enable)
+{
+	frm->rx_enabled = enable;
+}
+
+/** Enable or disable Tx */
+void sbmp_frm_enable_tx(SBMP_FrmInst *frm, bool enable)
+{
+	frm->tx_enabled = enable;
+}
+
+/** Enable or disable both Rx and Tx */
 void sbmp_frm_enable(SBMP_FrmInst *frm, bool enable)
 {
-	frm->enabled = enable;
+	sbmp_frm_enable_rx(frm, enable);
+	sbmp_frm_enable_tx(frm, enable);
 }
 
 /** Set user token */
@@ -79,7 +91,7 @@ void sbmp_frm_set_user_token(SBMP_FrmInst *frm, void *token)
 }
 
 /** Reset the receiver state  */
-static void reset_rx_state(SBMP_FrmInst *frm)
+void sbmp_frm_reset_rx(SBMP_FrmInst *frm)
 {
 	frm->rx_buffer_i = 0;
 	frm->rx_length = 0;
@@ -93,7 +105,7 @@ static void reset_rx_state(SBMP_FrmInst *frm)
 }
 
 /** Reset the transmitter state */
-static void reset_tx_state(SBMP_FrmInst *frm)
+void sbmp_frm_reset_tx(SBMP_FrmInst *frm)
 {
 	frm->tx_status = FRM_STATE_IDLE;
 	frm->tx_remain = 0;
@@ -156,7 +168,7 @@ static void call_frame_rx_callback(SBMP_FrmInst *frm)
  */
 SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *frm, uint8_t rxbyte)
 {
-	if (!frm->enabled) {
+	if (! frm->rx_enabled) {
 		return SBMP_RX_DISABLED;
 	}
 
@@ -208,7 +220,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *frm, uint8_t rxbyte)
 
 				if (len == 0) {
 					sbmp_error("Rx packet with no payload!");
-					reset_rx_state(frm); // abort
+					sbmp_frm_reset_rx(frm); // abort
 					break;
 				}
 
@@ -219,7 +231,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *frm, uint8_t rxbyte)
 		case FRM_STATE_HDRXOR:
 			if (! hdrxor_verify(frm, rxbyte)) {
 				sbmp_error("Header XOR mismatch!");
-				reset_rx_state(frm); // abort
+				sbmp_frm_reset_rx(frm); // abort
 				break;
 			}
 
@@ -240,7 +252,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *frm, uint8_t rxbyte)
 			frm->rx_buffer_i++;
 			if (frm->rx_buffer_i == frm->rx_length) {
 				// done
-				reset_rx_state(frm); // go IDLE
+				sbmp_frm_reset_rx(frm); // go IDLE
 			}
 			break;
 
@@ -264,7 +276,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *frm, uint8_t rxbyte)
 					call_frame_rx_callback(frm);
 
 					// clear
-					reset_rx_state(frm);
+					sbmp_frm_reset_rx(frm);
 				}
 			}
 			break;
@@ -283,7 +295,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *frm, uint8_t rxbyte)
 				}
 
 				// clear, enter IDLE
-				reset_rx_state(frm);
+				sbmp_frm_reset_rx(frm);
 			}
 			break;
 	}
@@ -294,7 +306,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *frm, uint8_t rxbyte)
 /** Send a frame header */
 bool sbmp_frm_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t length)
 {
-	if (!frm->enabled) {
+	if (! frm->tx_enabled) {
 		sbmp_error("Can't tx, not enabled.");
 		return false;
 	}
@@ -314,7 +326,7 @@ bool sbmp_frm_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t lengt
 		cksum_type = SBMP_CKSUM_XOR;
 	}
 
-	reset_tx_state(frm);
+	sbmp_frm_reset_tx(frm);
 
 	frm->tx_cksum_type = cksum_type;
 	frm->tx_remain = length;
@@ -347,6 +359,11 @@ bool sbmp_frm_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t lengt
 /** End frame and enter idle mode */
 static void end_frame(SBMP_FrmInst *frm)
 {
+	if (!frm->tx_enabled) {
+		sbmp_error("Can't tx, not enabled.");
+		return;
+	}
+
 	cksum_end(frm->tx_cksum_type, &frm->tx_cksum_scratch);
 
 	uint32_t cksum = frm->tx_cksum_scratch;
@@ -373,7 +390,7 @@ static void end_frame(SBMP_FrmInst *frm)
 /** Send a byte in the currently open frame */
 bool sbmp_frm_send_byte(SBMP_FrmInst *frm, uint8_t byte)
 {
-	if (!frm->enabled) {
+	if (!frm->tx_enabled) {
 		sbmp_error("Can't tx, not enabled.");
 		return false;
 	}
@@ -396,7 +413,7 @@ bool sbmp_frm_send_byte(SBMP_FrmInst *frm, uint8_t byte)
 /** Send a buffer in the currently open frame */
 uint16_t sbmp_frm_send_buffer(SBMP_FrmInst *frm, const uint8_t *buffer, uint16_t length)
 {
-	if (!frm->enabled) {
+	if (! frm->tx_enabled) {
 		sbmp_error("Can't tx, not enabled.");
 		return false;
 	}

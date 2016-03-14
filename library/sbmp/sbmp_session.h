@@ -8,7 +8,7 @@
  *
  * Start by creating "endpoint" with sbmp_ep_init(), then configure and enable it.
  *
- * Next you can trigger a handshake, which assigns your endpoint the origin bit,
+ * Next you should trigger a handshake, which assigns your endpoint the origin bit,
  * and obtains information about your peer (it's buffer size and preferred checksum).
  *
  * You can still interact with the framing layer directly, but it shouldn't be needed.
@@ -32,41 +32,60 @@ typedef enum {
 
 /** SBMP Endpoint (session)  structure */
 typedef struct {
-	bool origin;                            /*!< Local origin bit */
-	uint16_t next_session;                  /*!< Next session number */
+	bool origin;                     /*!< Local origin bit */
+	uint16_t next_session;           /*!< Next session number */
 
 	void (*rx_handler)(SBMP_Datagram *dg);  /*!< Datagram receive handler */
 
-	SBMP_FrmInst frm_state;                /*!< Framing layer internal state */
+	SBMP_FrmInst frm;                /*!< Framing layer internal state */
 
 	// Handshake
-	SBMP_HandshakeStatus hsk_state;     /*!< Handshake progress */
-	uint16_t hsk_session;                   /*!< Session number of the handshake request message */
-	uint16_t peer_buffer_size;              /*!< Peer's buffer size (obtained during handshake) */
-	SBMP_CksumType peer_pref_cksum; /*!< Peer's preferred checksum type */
+	SBMP_HandshakeStatus hsk_state;  /*!< Handshake progress */
+	uint16_t hsk_session;            /*!< Session number of the handshake request message */
+	uint16_t peer_buffer_size;       /*!< Peer's buffer size (obtained during handshake) */
+	SBMP_CksumType peer_pref_cksum;  /*!< Peer's preferred checksum type */
 
 	// Our info for the peer
-	uint16_t buffer_size;                   /*!< Our buffer size */
-	SBMP_CksumType pref_cksum;      /*!< Our preferred checksum */
+	uint16_t buffer_size;            /*!< Our buffer size */
+	SBMP_CksumType pref_cksum;       /*!< Our preferred checksum */
+
+	SBMP_Datagram static_dg;         /*!< Static datagram, used when DG is pased to a callback.
+										  This way the datagram remains valid until next Frm Rx,
+										  not only until the callback ends. Disabling the EP in the Rx
+										  callback lets you preserve the Dg for a longer period -
+										  i.e. put it in a global var, where a loop retrieves it. */
 } SBMP_Endpoint;
 
 
 /**
  * @brief Initialize the endpoint.
  *
+ * @note about the Rx handler:
+ * The datagram is valid until a new payload byte is received by the Frm.
+ * Disable the endpoint (-> thus also Frm) in the callback if you need
+ * to keep the Dg longer. Then re-enable it after the Dg is processed.
+ *
  * @param ep          : Endpoint struct pointer, or NULL to allocate one.
  * @param buffer      : Rx buffer. NULL to allocate one.
  * @param buffer_size : Rx buffer length
- * @param dg_rx_handler : Datagram received handler - the argument structure is valid ONLY within the function!
+ * @param dg_rx_handler : Datagram received handler.
  * @param tx_func     : Function to send a byte to USART
  * @return the endpoint struct pointer (allocated if ep was NULL)
  */
 SBMP_Endpoint *sbmp_ep_init(SBMP_Endpoint *ep,
-		uint8_t *buffer,
-		uint16_t buffer_size,
-		void (*dg_rx_handler)(SBMP_Datagram *dg),
-		void (*tx_func)(uint8_t byte)
-);
+							uint8_t *buffer,
+							uint16_t buffer_size,
+							void (*dg_rx_handler)(SBMP_Datagram *dg),
+							void (*tx_func)(uint8_t byte));
+
+/**
+ * @brief Reset an endpoint and it's Framing Layer
+ *
+ * This discards all state information.
+ *
+ * @param ep : Endpoint
+ */
+void sbmp_ep_reset(SBMP_Endpoint *ep);
 
 /** Set session number (good to randomize before starting a handshake) */
 void sbmp_ep_seed_session(SBMP_Endpoint *ep, uint16_t sesn);
@@ -133,12 +152,12 @@ uint16_t sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t 
  * @return success
  */
 bool sbmp_ep_send_response(
-		SBMP_Endpoint *ep,
-		SBMP_DgType type,
-		const uint8_t *buffer,
-		uint16_t length,
-		uint16_t sesn_ptr,
-		uint16_t *sent_bytes_ptr);
+	SBMP_Endpoint *ep,
+	SBMP_DgType type,
+	const uint8_t *buffer,
+	uint16_t length,
+	uint16_t sesn_ptr,
+	uint16_t *sent_bytes_ptr);
 
 /**
  * @brief Send a message in a new session.
@@ -152,12 +171,12 @@ bool sbmp_ep_send_response(
  * @return success
  */
 bool sbmp_ep_send_message(
-		SBMP_Endpoint *ep,
-		SBMP_DgType type,
-		const uint8_t *buffer,
-		uint16_t length,
-		uint16_t *sesn,
-		uint16_t *sent_bytes);
+	SBMP_Endpoint *ep,
+	SBMP_DgType type,
+	const uint8_t *buffer,
+	uint16_t length,
+	uint16_t *sesn,
+	uint16_t *sent_bytes);
 
 /**
  * @brief Start a handshake (origin bit arbitration)
@@ -176,7 +195,13 @@ SBMP_RxStatus sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte);
 /** Get current handshake state */
 SBMP_HandshakeStatus sbmp_ep_handshake_status(SBMP_Endpoint *ep);
 
-/** Enable or disable the framing layer backing this EP */
+/** Enable or disable both Rx and TX in the FrmInst backing this Endpoint */
 void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable);
+
+/** Enable or disable RX in the FrmInst backing this Endpoint */
+void sbmp_ep_enable_rx(SBMP_Endpoint *ep, bool enable_rx);
+
+/** Enable or disable TX in the FrmInst backing this Endpoint */
+void sbmp_ep_enable_tx(SBMP_Endpoint *ep, bool enable_tx);
 
 #endif /* SBMP_SESSION_H */
