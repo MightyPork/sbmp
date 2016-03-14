@@ -27,7 +27,7 @@ typedef enum {
 	SBMP_HSK_SUCCESS = 1,         /*!< Handshake done, origin assigned. */
 	SBMP_HSK_AWAIT_REPLY = 2,     /*!< Request sent, awaiting a reply */
 	SBMP_HSK_CONFLICT = 3,        /*!< Conflict occured during HSK */
-} SBMP_HandshakeState;
+} SBMP_HandshakeStatus;
 
 
 /** SBMP Endpoint (session)  structure */
@@ -40,14 +40,14 @@ typedef struct {
 	SBMP_FrmInst frm_state;                /*!< Framing layer internal state */
 
 	// Handshake
-	SBMP_HandshakeState hsk_state;     /*!< Handshake progress */
+	SBMP_HandshakeStatus hsk_state;     /*!< Handshake progress */
 	uint16_t hsk_session;                   /*!< Session number of the handshake request message */
 	uint16_t peer_buffer_size;              /*!< Peer's buffer size (obtained during handshake) */
-	SBMP_CksumType peer_preferred_cksum; /*!< Peer's preferred checksum type */
+	SBMP_CksumType peer_pref_cksum; /*!< Peer's preferred checksum type */
 
 	// Our info for the peer
 	uint16_t buffer_size;                   /*!< Our buffer size */
-	SBMP_CksumType preferred_cksum;      /*!< Our preferred checksum */
+	SBMP_CksumType pref_cksum;      /*!< Our preferred checksum */
 } SBMP_Endpoint;
 
 
@@ -174,7 +174,7 @@ bool sbmp_ep_start_handshake(SBMP_Endpoint *ep);
 SBMP_RxStatus sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte);
 
 /** Get current handshake state */
-SBMP_HandshakeState sbmp_ep_handshake_status(SBMP_Endpoint *ep);
+SBMP_HandshakeStatus sbmp_ep_handshake_status(SBMP_Endpoint *ep);
 
 /** Enable or disable the framing layer backing this EP */
 void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable);

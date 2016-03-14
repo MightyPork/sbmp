@@ -73,8 +73,8 @@ SBMP_Endpoint *sbmp_ep_init(
 	ep->buffer_size = buffer_size;
 
 #if SBMP_HAS_CRC32
-	ep->peer_preferred_cksum = SBMP_CKSUM_CRC32;
-	ep->preferred_cksum = SBMP_CKSUM_CRC32;
+	ep->peer_pref_cksum = SBMP_CKSUM_CRC32;
+	ep->pref_cksum = SBMP_CKSUM_CRC32;
 #else
 	ep->peer_preferred_cksum = SBMP_CKSUM_XOR;
 	ep->preferred_cksum = SBMP_CKSUM_XOR;
@@ -106,7 +106,7 @@ void sbmp_ep_set_preferred_cksum(SBMP_Endpoint *endp, SBMP_CksumType cksum_type)
 		cksum_type = SBMP_CKSUM_XOR;
 	}
 
-	endp->preferred_cksum = cksum_type;
+	endp->pref_cksum = cksum_type;
 }
 
 /** Set frm enabled state */
@@ -141,7 +141,7 @@ bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length
 		return false;
 	}
 
-	return sbmp_dg_start(&ep->frm_state, ep->peer_preferred_cksum, sesn, type, length);
+	return sbmp_dg_start(&ep->frm_state, ep->peer_pref_cksum, sesn, type, length);
 }
 
 /** Start a message in a new session */
@@ -240,7 +240,7 @@ static void populate_hsk_buf(SBMP_Endpoint *ep, uint8_t* buf)
 {
 	// [ pref_crc 1B | buf_size 2B ]
 
-	buf[0] = ep->preferred_cksum;
+	buf[0] = ep->pref_cksum;
 	buf[1] = U16_LSB(ep->buffer_size);
 	buf[2] = U16_MSB(ep->buffer_size);
 }
@@ -248,17 +248,17 @@ static void populate_hsk_buf(SBMP_Endpoint *ep, uint8_t* buf)
 /** Parse peer info from received handhsake dg payload */
 static void parse_peer_hsk_buf(SBMP_Endpoint *ep, const uint8_t* buf)
 {
-	ep->peer_preferred_cksum = buf[0];
+	ep->peer_pref_cksum = buf[0];
 	ep->peer_buffer_size = (uint16_t)(buf[1] | (buf[2] << 8));
 
 	sbmp_info("HSK success, peer buf %"PRIu16", pref cksum %d",
 			  ep->peer_buffer_size,
-			  ep->peer_preferred_cksum);
+			  ep->peer_pref_cksum);
 
 	// check if checksum available
-	if (ep->peer_preferred_cksum == SBMP_CKSUM_CRC32 && !SBMP_HAS_CRC32) {
+	if (ep->peer_pref_cksum == SBMP_CKSUM_CRC32 && !SBMP_HAS_CRC32) {
 		sbmp_error("CRC32 not avail, using XOR as peer's pref cksum.");
-		ep->peer_preferred_cksum = SBMP_CKSUM_XOR;
+		ep->peer_pref_cksum = SBMP_CKSUM_XOR;
 	}
 }
 
@@ -291,7 +291,7 @@ bool sbmp_ep_start_handshake(SBMP_Endpoint *ep)
 }
 
 /** Get hsk state */
-SBMP_HandshakeState sbmp_ep_handshake_status(SBMP_Endpoint *ep)
+SBMP_HandshakeStatus sbmp_ep_handshake_status(SBMP_Endpoint *ep)
 {
 	return ep->hsk_state;
 }
