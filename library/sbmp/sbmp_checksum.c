@@ -10,7 +10,7 @@
 
 
 /** Get nr of bytes in a checksum */
-uint8_t checksum_length(SBMP_CksumType cksum_type)
+uint8_t chksum_length(SBMP_CksumType cksum_type)
 {
 	switch (cksum_type) {
 		case SBMP_CKSUM_CRC32: return 4;

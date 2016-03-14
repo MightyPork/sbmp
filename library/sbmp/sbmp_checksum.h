@@ -21,7 +21,7 @@ typedef enum {
 
 
 /** Get nr of bytes in a checksum */
-uint8_t checksum_length(SBMP_CksumType cksum_type);
+uint8_t chksum_length(SBMP_CksumType cksum_type);
 
 /** Start calculating a checksum. Updates scratch. */
 void cksum_begin(SBMP_CksumType type, uint32_t *scratch);
