@@ -1,21 +1,20 @@
 SBMP library
 ============
 
-This is an implementation of SBMP, without `malloc()`. It's more robust than the 
-naive malloc variant.
+This is an example implementation of SBMP, which should be usable in embedded
+environment.
+
+The library cosists of a **Framing layer**, **Datagram middleware** and a **Session layer**.
 
 How to use
 ----------
 
 The framing layer is isolated in the `sbmp_frame` module, and can be used on it's own.
 
-If you want to use the datagram layer, use `sbmp_datagram`.
+If you want to get the most out of SBMP, use the session layer. Session layer functions are 
+namespaced `sbmp_ep_` ("ep" stands for endpoint).
 
 All header files are included in `sbmp.h`, which is the only file you should 
 `#include` in your application.
 
 Read comments in `main.c` for an example how to use the library.
-
-`main.c` contains a loopback example, where the "hardware" is left out and
-transmitted bytes are directly sent to the receive function. This tests that both 
-parts are working properly.

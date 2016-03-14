@@ -38,7 +38,8 @@ int main(void)
 	// --- Set up SBMP ---
 
 	// For this example, we choose to let the driver allocate the needed structs
-	// You can pass your own static struct and array instead of the NULLs,
+
+	// You can pass your own static struct and a buffer array instead of the NULLs,
 	// if you don't want to use MALLOC.
 
 	alice = sbmp_ep_init(NULL, NULL, 30, alice_rx, alice_tx);

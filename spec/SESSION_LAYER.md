@@ -2,10 +2,10 @@
 
 <i>
 Simple Binary Messaging Protocol specification <br>
-rev. 1.1, 12 March 2016
+rev. 1.2, 14 March 2016
 </i>
 
-The messaging protocol uses a simple session system, which allows to perform 
+The messaging protocol uses a simple session system, which allows to perform
 multiple request-response transactions simultaneously without losing the
 context.
 
@@ -30,25 +30,24 @@ field for no-payload datagrams.
 
 | Dg. type | Meaning
 | -------: | :------
-| 0x00     | Start of the origin arbitration
-| 0x01     | Acknowledgement (origin request accepted)
-| 0x02     | Negative acknowledgement (origin denied)
-| 0x03     | Conflict in origin arbitration
+| 0x00     | Handshake request
+| 0x01     | Handshake confirmation (origin request accepted)
+| 0x02     | Handshake conflict
 
-Other datagram types are described in the payload structure spec. **TODO link**
+Other datagram types can be used for user payloads.
 
-The codes `0x01` and `0x02` can be freely used outside the arbitration process
-with the meaning "OK" and "Not Ready" / "Rejected".
+It's recommended to use types >= 100, to avoid possible conflicts with a future
+version of the spec.
+
 
 ### Payload
 
-The datagram payload can be up to *65532 bytes long* - a limitation of the 
-framing layer. 
+The datagram payload can be up to *65535-3 bytes long*.
 
-In practice however, it's recommended to use shorter datagrams with flow control
-(chunked bulk transfer) if large amounts of data need to be sent.
+In practice it's recommended to use shorter datagrams with flow control
+(chunked transfer) if large amounts of data need to be sent.
 
-The payload length and structure depends on the *Datagram type*.
+This avoids the need for large buffers.
 
 
 ### Session number
@@ -79,50 +78,61 @@ started the session.
 This ensures the two parties can never start a session with the same number.
 
 
-### Origin arbitration
+### Handshake - origin arbitration
 
 Hard-coding the origin bit could work for simple scenarios, but to achieve
-better inter-operability, the session layer contains an arbitration mechanism:
+better inter-operability, a handshake protocol is used:
 
-Before *(our)* party can start talking on the bus, it must claim an origin number.
+Before *(our)* party can start talking on the bus, it must claim it's origin number.
 
-This is done by sending a datagram with session number `0x0000`, the origin bit
-set to the value we are requesting, and datagram type set to `0x00`.
+This is done by sending a datagram of type `0x00` (Handshake request), with the
+origin bit set to the value we are requesting.
+
+The datagram body should contain information describing our endpoint.
 
 For example, to request the origin bit `1`, the following datagram is used:
 
 ```none
-Request to claim the origin bit "1"
+Request to claim the origin bit "1",
+- want CRC32,
+- rx buffer 100 bytes long
 
-  S.N.          Dg.t.
-+------+------+------+
-| 0x00 | 0x80 | 0x00 |
-+------+------+------+
+    Session     Datagram   Preferred       Rx buffer
+    number      type       checksum type   size (100 B)
++------+------+----------+---------------+------+------+
+| 0x00 | 0x80 |   0x00   |      32       | 0x64 | 0x00 |
++------+------+----------+---------------+------+------+
 
 Please note that the S.N. is litte-endian.
 ```
 
-The receiving party replies with the same S.N. and a status code in the datagram
+The checksum type and buffer size fields are optional and can be left out if needed.
+
+Those extra fields are used by the peer to tailor it's outgoing messages for us.
+
+The receiving party replies with the same S.N., and the status in the datagram
 type field:
 
 - 0x01 (acknowledge)
-- 0x02 (negative acknowledge)
-- 0x03 (conflict)
+- 0x02 (conflict)
+
+The reply should also contain the extra fields.
 
 
 ```none
 Response - "acknowledge"
+- don't watch checksums
+- rx buffer is 32 bytes long
 
-  S.N.          Dg.t.
-+------+------+------+
-| 0x00 | 0x80 | 0x01 |
-+------+------+------+
+  S.N.          Dg.t.   No checksums    32B buffer
++------+------+------+---------------+------+------+
+| 0x00 | 0x80 | 0x01 |       0       | 0x20 | 0x00 |
++------+------+------+---------------+------+------+
 ```
 
-- If the receiving party has acknowledged *our* origin bit, it accepts the 
+- If the receiving party has acknowledged *our* origin bit, it accepts the
   opposite bit, and the communication can continue.
-- If the request was denied, we have to use the opposite bit.
-- The *conflict* response is issued in case the receiving party has sent a 
+- The *conflict* response is issued in case the receiving party has sent a
   request too, and awaits a response.
 
 In the conflict situation, both parties discard any buffered messages and wait
@@ -137,25 +147,16 @@ the waiting is aborted and communication can continue.
 - Node B acknowledges, claims origin 0
 - *arbitration done*
 
-This is always the case if node B is a slave. (i.e. - does not start 
+This is always the case if node B is a slave. (i.e. - does not start
 communication on it's own).
 
-#### Example 2 - collision with a conflict
+#### Example 2 - conflict
 
 - Node A requests origin 1
 - Node B requests origin 1 at the same time
-- Node A (or B) detects the collision and replies with code 0x03 - conflict
+- Node A (or B) detects the collision and replies with code 0x02 - conflict
 - If the other party has already send any other response, it's discarded.
-- Both parties clear their message queue and wait for a random number of 
+- Both parties clear their message queue and wait for a random number of
   milliseconds before performing another attempt.
 
-#### Example 3 - collision without a conflict
-
-- Node A requests origin 1
-- Node B requests origin 0
-- Node A (or B) detects the collision, but since the IDs are different,
-  no conflict has occured, and the request is accepted by both sides.
-- *arbitration done*
-
 *End of file.*
-

@@ -27,6 +27,6 @@ The current specification (draft) is in the [spec](spec/) folder.
 
 ## Library
 
-A complete library is not yet finished, but the work-in-progress code
-can be found in the [library](library/) folder.
+An example implementation of SBMP is in the [library](library/) folder.
+
 

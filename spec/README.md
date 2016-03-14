@@ -2,7 +2,7 @@
 
 <i>
 Simple Binary Messaging Protocol specification <br>
-rev. 1.1, 12 March 2016
+rev. 1.2, 14 March 2016
 </i>
 
 ## Conventions
@@ -23,7 +23,7 @@ peripherals.
 
 ## Session layer
 
-SBMP uses a system of numbered sessions (or "transactions") to ensure each 
+SBMP uses a system of numbered sessions (or "transactions") to ensure each
 message can be put in the right context, even if other messages were sent
 before receiving a reply.
 
