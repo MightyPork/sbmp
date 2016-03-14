@@ -1,4 +1,4 @@
-#include "sbmp_common.h"
+#include "sbmp_logging.h"
 #include <stdio.h>
 #include <stdarg.h>
 

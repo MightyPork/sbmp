@@ -44,7 +44,11 @@ SBMP_Endpoint *sbmp_ep_init(
 {
 	if (ep == NULL) {
 		// request to allocate it
-		ep = malloc(sizeof(SBMP_Endpoint));
+		#if SBMP_MALLOC
+			ep = malloc(sizeof(SBMP_Endpoint));
+		#else
+			return NULL; // fail
+		#endif
 	}
 
 	// set up the framing layer
@@ -62,10 +66,16 @@ SBMP_Endpoint *sbmp_ep_init(
 	ep->hsk_state = SBMP_HSK_NOT_STARTED;
 
 	ep->peer_buffer_size = 0xFFFF; // max possible buffer
-	ep->peer_preferred_cksum = SBMP_CKSUM_CRC32;
 	// our info for the peer
 	ep->buffer_size = buffer_size;
+
+#if SBMP_SUPPORT_CRC32
+	ep->peer_preferred_cksum = SBMP_CKSUM_CRC32;
 	ep->preferred_cksum = SBMP_CKSUM_CRC32;
+#else
+	ep->peer_preferred_cksum = SBMP_CKSUM_NONE;
+	ep->preferred_cksum = SBMP_CKSUM_NONE;
+#endif
 
 	return ep;
 }

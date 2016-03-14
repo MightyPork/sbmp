@@ -54,8 +54,8 @@ int main(void)
 
 	// each node can choose what checksum they want to receive
 	// (eg. an Arduino node may leave out the CRC32 routine for size reasons)
-	sbmp_ep_set_preferred_cksum(alice, SBMP_CKSUM_CRC32);
-	sbmp_ep_set_preferred_cksum(bob, SBMP_CKSUM_NONE);
+//	sbmp_ep_set_preferred_cksum(alice, SBMP_CKSUM_CRC32);
+//	sbmp_ep_set_preferred_cksum(bob, SBMP_CKSUM_NONE);
 
 	// enable the endpoints
 	sbmp_ep_enable(alice, true);

@@ -4,7 +4,7 @@
 #include "sbmp.h"
 
 /**
- * SBMP common utilities etc.
+ * SBMP logging utils
  */
 
 

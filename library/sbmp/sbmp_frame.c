@@ -3,7 +3,10 @@
 #include <inttypes.h>
 
 #include "sbmp.h"
+
+#if SBMP_SUPPORT_CRC32
 #include "crc32.h"
+#endif
 
 // protos
 static void reset_rx_state(SBMP_FrmState *state);
@@ -20,22 +23,33 @@ static uint32_t tx_cksum_end(SBMP_FrmState *state);
 
 /** Allocate the state struct & init all fields */
 SBMP_FrmState *sbmp_frm_init(
-		SBMP_FrmState *state,
-		uint8_t *buffer, uint16_t buffer_size,
-		void (*rx_handler)(uint8_t *, uint16_t, void *),
-		void (*tx_func)(uint8_t))
+	SBMP_FrmState *state,
+	uint8_t *buffer, uint16_t buffer_size,
+	void (*rx_handler)(uint8_t *, uint16_t, void *),
+	void (*tx_func)(uint8_t))
 {
+
+#if SBMP_MALLOC
+
 	if (state == NULL) {
 		// caller wants us to allocate it
 		state = malloc(sizeof(SBMP_FrmState));
 	}
 
-	state->rx_handler = rx_handler;
-
 	if (buffer == NULL) {
 		// caller wants us to allocate it
 		buffer = malloc(buffer_size);
 	}
+
+#else
+
+	if (state == NULL || buffer == NULL) {
+		return NULL; // malloc not enabled, fail
+	}
+
+#endif
+
+	state->rx_handler = rx_handler;
 
 	state->rx_buffer = buffer;
 	state->rx_buffer_cap = buffer_size;
@@ -280,27 +294,42 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmState *state, uint8_t rxbyte)
 /** Start calculating a checksum */
 static void rx_cksum_begin(SBMP_FrmState *state)
 {
-	if (state->rx_cksum_type == SBMP_CKSUM_CRC32) {
-		state->rx_crc_scratch = crc32_begin();
+	switch (state->rx_cksum_type) {
+#if SBMP_SUPPORT_CRC32
+		case SBMP_CKSUM_CRC32:
+			state->rx_crc_scratch = crc32_begin();
+			break;
+#endif
+		default:
+			;
 	}
 }
 
 /** Update the checksum calculation with an incoming byte */
 static void rx_cksum_update(SBMP_FrmState *state, uint8_t byte)
 {
-	if (state->rx_cksum_type == SBMP_CKSUM_CRC32) {
-		crc32_update(&state->rx_crc_scratch, byte);
+	switch (state->rx_cksum_type) {
+#if SBMP_SUPPORT_CRC32
+		case SBMP_CKSUM_CRC32:
+			crc32_update(&state->rx_crc_scratch, byte);
+			break;
+#endif
+		default:
+			;
 	}
 }
 
 /** Stop the checksum calculation, get the result */
 static uint32_t rx_cksum_end(SBMP_FrmState *state)
 {
-	if (state->rx_cksum_type == SBMP_CKSUM_CRC32) {
-		return crc32_end(state->rx_crc_scratch);
+	switch (state->rx_cksum_type) {
+#if SBMP_SUPPORT_CRC32
+		case SBMP_CKSUM_CRC32:
+			return crc32_end(state->rx_crc_scratch);
+#endif
+		default:
+			return 0;
 	}
-
-	return 0;
 }
 
 /** Check if the calculated checksum matches the received one */
@@ -308,37 +337,57 @@ static bool rx_cksum_verify(SBMP_FrmState *state, uint32_t received_cksum)
 {
 	uint32_t computed = rx_cksum_end(state);
 
-	if (state->rx_cksum_type == SBMP_CKSUM_CRC32) {
-		return (computed == received_cksum);
+	switch (state->rx_cksum_type) {
+#if SBMP_SUPPORT_CRC32
+		case SBMP_CKSUM_CRC32:
+			return (computed == received_cksum);
+			break;
+#endif
+		default:
+			// unknown checksum type
+			return true; // assume it's OK
 	}
-
-	// unknown checksum type
-	return true; // assume it's OK
 }
 
 /** Start calculating a checksum */
 static void tx_cksum_begin(SBMP_FrmState *state)
 {
-	if (state->tx_cksum_type == SBMP_CKSUM_CRC32) {
-		state->tx_crc_scratch = crc32_begin();
+	switch (state->tx_cksum_type) {
+#if SBMP_SUPPORT_CRC32
+		case SBMP_CKSUM_CRC32:
+			state->tx_crc_scratch = crc32_begin();
+			break;
+#endif
+		default:
+			state->tx_crc_scratch = 0; // clear
 	}
 }
 
 /** Update the checksum calculation with an incoming byte */
 static void tx_cksum_update(SBMP_FrmState *state, uint8_t byte)
 {
-	if (state->tx_cksum_type == SBMP_CKSUM_CRC32) {
-		crc32_update(&state->tx_crc_scratch, byte);
+	switch (state->tx_cksum_type) {
+#if SBMP_SUPPORT_CRC32
+		case SBMP_CKSUM_CRC32:
+			crc32_update(&state->tx_crc_scratch, byte);
+			break;
+#endif
+		default:
+			;
 	}
 }
 
 /** Stop the checksum calculation, get the result */
 static uint32_t tx_cksum_end(SBMP_FrmState *state)
 {
-	if (state->tx_cksum_type == SBMP_CKSUM_CRC32) {
-		return crc32_end(state->tx_crc_scratch);
+	switch (state->tx_cksum_type) {
+#if SBMP_SUPPORT_CRC32
+		case SBMP_CKSUM_CRC32:
+			return crc32_end(state->tx_crc_scratch);
+#endif
+		default:
+			return 0;
 	}
-	return 0;
 }
 
 // ---------------------------------------------------

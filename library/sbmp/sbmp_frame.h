@@ -19,7 +19,11 @@
 /** Checksum types */
 typedef enum {
 	SBMP_CKSUM_NONE = 0,   /*!< No checksum */
+
+#if SBMP_SUPPORT_CRC32
 	SBMP_CKSUM_CRC32 = 32, /*!< ISO CRC-32 */
+#endif
+
 } SBMP_ChecksumType;
 
 /**

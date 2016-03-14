@@ -3,9 +3,9 @@ CFLAGS += -g
 OBJECTS = \
 	main.o \
 	sbmp/crc32.o \
+	sbmp/sbmp_logging.o \
 	sbmp/sbmp_frame.o \
 	sbmp/sbmp_datagram.o \
-	sbmp/sbmp_common.o \
 	sbmp/sbmp_session.o
 
 main: $(OBJECTS)

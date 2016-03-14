@@ -1,4 +1,4 @@
-#include <malloc.h>
+#include <stdlib.h>
 
 #include "sbmp.h"
 
@@ -13,7 +13,11 @@ SBMP_Datagram *sbmp_parse_datagram(SBMP_Datagram *dg, const uint8_t *payload, ui
 
 	if (dg == NULL) {
 		// request to allocate
-		dg = malloc(sizeof(SBMP_Datagram));
+		#if SBMP_MALLOC
+			dg = malloc(sizeof(SBMP_Datagram));
+		#else
+			return NULL; // fail
+		#endif
 	}
 
 	dg->session = (uint16_t)((payload[0]) | (payload[1] << 8));
