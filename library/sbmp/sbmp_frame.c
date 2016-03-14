@@ -308,6 +308,11 @@ bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16
 		return false;
 	}
 
+	if (cksum_type == SBMP_CKSUM_CRC32 && !SBMP_SUPPORT_CRC32) {
+		sbmp_error("CRC32 disabled, using XOR for Tx.");
+		cksum_type = SBMP_CKSUM_XOR;
+	}
+
 	reset_tx_state(state);
 
 	state->tx_cksum_type = cksum_type;
