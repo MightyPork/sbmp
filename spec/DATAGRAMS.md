@@ -24,7 +24,7 @@ rx_buffer_size          : 2 bytes
 
 ### User datagrams
 
-Ohter numbers are free to be used by the application.
+Other numbers are free to be used by the application.
 
 To avoid possible conflict with a future version of this spec, it's recommended to preferably
 use numbers >= 100 for user payloads.
