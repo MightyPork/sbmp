@@ -62,7 +62,7 @@ int main(void)
 		const int len = 10;
 		const int type = 100;
 		const int sess = 0;
-		sbmp_start_datagram(&sbmp, 32, sess, type, len);
+		sbmp_dg_start(&sbmp, 32, sess, type, len);
 		// Send datagram payload
 		sbmp_frm_send_buffer(&sbmp, (uint8_t*)"0123456789", len);
 
@@ -134,7 +134,7 @@ static void frame_received(uint8_t *payload, uint16_t length, void *user_token)
 
 		SBMP_Datagram dg;
 
-		bool suc = sbmp_parse_datagram(&dg, payload, length);
+		bool suc = sbmp_dg_parse(&dg, payload, length);
 		// should now check if suc is true.
 
 		printf("Received datagram type %d, session %d, length %d\n", dg.type, dg.session, dg.length);

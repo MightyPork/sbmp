@@ -5,7 +5,7 @@
 #include "sbmp_logging.h"
 #include "sbmp_datagram.h"
 
-SBMP_Datagram *sbmp_parse_datagram(SBMP_Datagram *dg, const uint8_t *payload, uint16_t length)
+SBMP_Datagram *sbmp_dg_parse(SBMP_Datagram *dg, const uint8_t *payload, uint16_t length)
 {
 	if (length < 3) {
 		sbmp_error("Can't parse datagram, payload too short.");
@@ -33,36 +33,36 @@ SBMP_Datagram *sbmp_parse_datagram(SBMP_Datagram *dg, const uint8_t *payload, ui
 
 
 /** Start a datagram transmission */
-bool sbmp_start_datagram(SBMP_FrmInst *state, SBMP_CksumType cksum_type, uint16_t session, SBMP_DgType type, uint16_t length)
+bool sbmp_dg_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t session, SBMP_DgType type, uint16_t length)
 {
 	if (length > (0xFFFF - 3)) {
 		sbmp_error("Can't send a datagram, payload too long.");
 		return false;
 	}
 
-	if (state->tx_status != FRM_STATE_IDLE) {
+	if (frm->tx_status != FRM_STATE_IDLE) {
 		sbmp_error("Can't state datagram, SBMP tx not IDLE.");
 		return false;
 	}
 
-	if (! sbmp_frm_start(state, cksum_type, length + 3)) return false;
+	if (! sbmp_frm_start(frm, cksum_type, length + 3)) return false;
 
-	sbmp_frm_send_byte(state, session & 0xFF);
-	sbmp_frm_send_byte(state, (session >> 8) & 0xFF);
-	sbmp_frm_send_byte(state, type);
+	sbmp_frm_send_byte(frm, session & 0xFF);
+	sbmp_frm_send_byte(frm, (session >> 8) & 0xFF);
+	sbmp_frm_send_byte(frm, type);
 
 	return true;
 }
 
 
 /** Send a whole datagram in one go */
-bool sbmp_send_datagram(SBMP_FrmInst *state, SBMP_CksumType cksum_type, SBMP_Datagram *dg)
+bool sbmp_dg_send(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, SBMP_Datagram *dg)
 {
-	if (! sbmp_start_datagram(state, cksum_type, dg->session, dg->type, dg->length)) {
+	if (! sbmp_dg_start(frm, cksum_type, dg->session, dg->type, dg->length)) {
 		sbmp_error("Failed to start datagram.");
 		return false;
 	}
 
-	size_t n = sbmp_frm_send_buffer(state, dg->payload, dg->length);
+	size_t n = sbmp_frm_send_buffer(frm, dg->payload, dg->length);
 	return (n == dg->length);
 }

@@ -22,7 +22,7 @@ static void ep_rx_handler(uint8_t *buf, uint16_t len, void *token)
 	SBMP_Endpoint *ep = (SBMP_Endpoint *)token;
 
 	SBMP_Datagram dg;
-	if (NULL != sbmp_parse_datagram(&dg, buf, len)) {
+	if (NULL != sbmp_dg_parse(&dg, buf, len)) {
 		// payload parsed OK
 
 		// check if handshake datagram, else call user callback.
@@ -141,7 +141,7 @@ bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length
 		return false;
 	}
 
-	return sbmp_start_datagram(&ep->frm_state, ep->peer_preferred_cksum, sesn, type, length);
+	return sbmp_dg_start(&ep->frm_state, ep->peer_preferred_cksum, sesn, type, length);
 }
 
 /** Start a message in a new session */
