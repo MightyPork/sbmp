@@ -8,6 +8,9 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg);
 #define U16_LSB(x) ((x) & 0xFF)
 #define U16_MSB(x) ((x >> 8) & 0xFF)
 
+// length of the payload sent with a handshake packet.
+#define HSK_PAYLOAD_LEN 3
+
 
 /** Rx handler that is assigned to the framing layer */
 static void ep_rx_handler(uint8_t *buf, uint16_t len, void *token)
@@ -112,13 +115,18 @@ static uint16_t next_session(SBMP_Endpoint *ep)
 
 // --- Header/body send funcs ---
 
-/** Start a message as a reply, with CRC32 */
+/** Start a message as a reply */
 bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t sesn)
 {
-	return sbmp_start_datagram(&ep->frm_state, 32, sesn, type, length);
+	if (length > ep->peer_buffer_size - HSK_PAYLOAD_LEN) {
+		sbmp_error("Msg too long (%"PRIu16" B), peer accepts max %"PRIu16" B.", length, ep->peer_buffer_size - HSK_PAYLOAD_LEN);
+		return false;
+	}
+
+	return sbmp_start_datagram(&ep->frm_state, ep->peer_preferred_cksum, sesn, type, length);
 }
 
-/** Start a message in a new session, with CRC32 */
+/** Start a message in a new session */
 bool sbmp_ep_start_session(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t *sesn_ptr)
 {
 	uint16_t sn = next_session(ep);
@@ -205,9 +213,11 @@ bool sbmp_ep_send_message(
 
 
 // --- Handshake ---
-
-#define HSK_PAYLOAD_LEN 3
-/** Prepare a buffer to send to peer during handshake */
+/**
+ * Prepare a buffer to send to peer during handshake
+ *
+ * The buffer is long HSK_PAYLOAD_LEN bytes
+ */
 static void populate_hsk_buf(SBMP_Endpoint *ep, uint8_t* buf)
 {
 	// [ pref_crc 1B | buf_size 2B ]
@@ -218,7 +228,7 @@ static void populate_hsk_buf(SBMP_Endpoint *ep, uint8_t* buf)
 }
 
 /** Parse peer info from received handhsake dg payload */
-void parse_peer_hsk_buf(SBMP_Endpoint *ep, const uint8_t* buf)
+static void parse_peer_hsk_buf(SBMP_Endpoint *ep, const uint8_t* buf)
 {
 	ep->peer_preferred_cksum = buf[0];
 	ep->peer_buffer_size = (uint16_t)(buf[1] | (buf[2] << 8));
@@ -262,7 +272,14 @@ SBMP_HandshakeState sbmp_ep_handshake_status(SBMP_Endpoint *ep)
 	return ep->hsk_state;
 }
 
-/** Handle incoming datagram, consume & deal with if handshake dg */
+/**
+ * @brief Process handshake datagrams & update handshake state accordingly.
+ *
+ * Non-handshake datagrams are passed on to the user Rx callback.
+ *
+ * @param ep : endpoint
+ * @param dg : datagram
+ */
 static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 {
 	bool hsk_start = (dg->type == SBMP_DG_HSK_START);

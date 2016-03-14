@@ -41,7 +41,7 @@ int main(void)
 	// You can pass your own static struct and array instead of the NULLs,
 	// if you don't want to use MALLOC.
 
-	alice = sbmp_ep_init(NULL, NULL, 40, alice_rx, alice_tx);
+	alice = sbmp_ep_init(NULL, NULL, 30, alice_rx, alice_tx);
 	bob   = sbmp_ep_init(NULL, NULL, 60, bob_rx, bob_tx);
 
 	// --- Prepare the endpoints ---
