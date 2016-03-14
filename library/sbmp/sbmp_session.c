@@ -66,8 +66,8 @@ SBMP_Endpoint *sbmp_ep_init(
 	ep->peer_pref_cksum = SBMP_CKSUM_CRC32;
 	ep->pref_cksum = SBMP_CKSUM_CRC32;
 #else
-	ep->peer_preferred_cksum = SBMP_CKSUM_XOR;
-	ep->preferred_cksum = SBMP_CKSUM_XOR;
+	ep->peer_pref_cksum = SBMP_CKSUM_XOR;
+	ep->pref_cksum = SBMP_CKSUM_XOR;
 #endif
 
 	// reset state information

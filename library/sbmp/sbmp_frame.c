@@ -35,7 +35,7 @@ SBMP_FrmInst *sbmp_frm_init(
 
 #else
 
-	if (state == NULL || buffer == NULL) {
+	if (frm == NULL || buffer == NULL) {
 		return NULL; // malloc not enabled, fail
 	}
 
