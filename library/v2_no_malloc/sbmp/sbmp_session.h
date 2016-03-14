@@ -44,7 +44,7 @@ void sbmp_ep_set_origin(SBMP_Endpoint *endp, bool bit)
 }
 
 /** Get a new session number */
-uint16_t sbmp_ep_new_session(SBMP_Endpoint *ep);
+uint16_t sbmp_ep_next_session(SBMP_Endpoint *ep);
 
 /**
  * @brief Start a message as a reply, with CRC32
@@ -72,7 +72,7 @@ bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length
 static inline
 bool sbmp_ep_start_session(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length)
 {
-	return sbmp_ep_start_response(ep, type, length, sbmp_ep_new_session(ep));
+	return sbmp_ep_start_response(ep, type, length, sbmp_ep_next_session(ep));
 }
 
 /**
@@ -124,7 +124,7 @@ uint16_t sbmp_ep_send_response(SBMP_Endpoint *ep, SBMP_DgType type, const uint8_
 static inline
 uint16_t sbmp_ep_send_message(SBMP_Endpoint *ep, SBMP_DgType type, const uint8_t *buffer, uint16_t length)
 {
-	return sbmp_ep_send_response(ep, type, buffer, length, sbmp_ep_new_session(ep));
+	return sbmp_ep_send_response(ep, type, buffer, length, sbmp_ep_next_session(ep));
 }
 
 #endif /* SBMP_SESSION_H */

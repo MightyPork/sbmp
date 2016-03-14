@@ -39,7 +39,7 @@ SBMP_Endpoint *sbmp_ep_init(SBMP_Endpoint *ep,
 }
 
 /** Get a new session number */
-uint16_t sbmp_ep_new_session(SBMP_Endpoint *ep)
+uint16_t sbmp_ep_next_session(SBMP_Endpoint *ep)
 {
 	uint16_t sesn = ep->next_session;
 
