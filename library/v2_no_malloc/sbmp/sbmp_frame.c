@@ -6,48 +6,61 @@
 #include "crc32.h"
 
 // protos
-static void reset_rx_state(SBMP_State *state);
-static void reset_tx_state(SBMP_State *state);
-static void call_frame_rx_callback(SBMP_State *state);
-static void rx_cksum_begin(SBMP_State *state);
-static void rx_cksum_update(SBMP_State *state, uint8_t byte);
-static uint32_t rx_cksum_end(SBMP_State *state);
-static bool rx_cksum_verify(SBMP_State *state, uint32_t received_cksum);
-static void tx_cksum_begin(SBMP_State *state);
-static void tx_cksum_update(SBMP_State *state, uint8_t byte);
-static uint32_t tx_cksum_end(SBMP_State *state);
+static void reset_rx_state(SBMP_FrmState *state);
+static void reset_tx_state(SBMP_FrmState *state);
+static void call_frame_rx_callback(SBMP_FrmState *state);
+static void rx_cksum_begin(SBMP_FrmState *state);
+static void rx_cksum_update(SBMP_FrmState *state, uint8_t byte);
+static uint32_t rx_cksum_end(SBMP_FrmState *state);
+static bool rx_cksum_verify(SBMP_FrmState *state, uint32_t received_cksum);
+static void tx_cksum_begin(SBMP_FrmState *state);
+static void tx_cksum_update(SBMP_FrmState *state, uint8_t byte);
+static uint32_t tx_cksum_end(SBMP_FrmState *state);
 
 
 /** Allocate the state struct & init all fields */
-void sbmp_init(
-	SBMP_State *state,
+SBMP_FrmState *sbmp_frm_init(
+	SBMP_FrmState *state,
 	uint8_t *buffer, uint16_t buffer_size,
-	void (*rx_handler)(uint8_t *, uint16_t),
+	void (*rx_handler)(uint8_t *, uint16_t, void *),
 	void (*tx_func)(uint8_t)
 )
 {
+	if (state == NULL) {
+		// caller wants us to allocate it
+		state = malloc(sizeof(SBMP_FrmState));
+	}
+
 	state->rx_handler = rx_handler;
 
-	// Allocate the buffer
+	if (buffer == NULL) {
+		// caller wants us to allocate it
+		buffer = malloc(buffer_size);
+	}
+
 	state->rx_buffer = buffer;
 	state->rx_buffer_cap = buffer_size;
+
+	state->user_token = NULL; // NULL if not set
 
 	state->tx_func = tx_func;
 	state->tx_lock_func = NULL;
 	state->tx_release_func = NULL;
 
-	sbmp_reset(state);
+	sbmp_frm_reset(state);
+
+	return state;
 }
 
 /** Reset the internal state */
-void sbmp_reset(SBMP_State *state)
+void sbmp_frm_reset(SBMP_FrmState *state)
 {
 	reset_rx_state(state);
 	reset_tx_state(state);
 }
 
 /** Reset the receiver state  */
-static void reset_rx_state(SBMP_State *state)
+static void reset_rx_state(SBMP_FrmState *state)
 {
 	state->rx_buffer_i = 0;
 	state->rx_length = 0;
@@ -61,7 +74,7 @@ static void reset_rx_state(SBMP_State *state)
 }
 
 /** Reset the transmitter state */
-static void reset_tx_state(SBMP_State *state)
+static void reset_tx_state(SBMP_FrmState *state)
 {
 	state->tx_state = FRM_STATE_IDLE;
 	state->tx_remain = 0;
@@ -72,21 +85,21 @@ static void reset_tx_state(SBMP_State *state)
 
 /** Update a header XOR */
 static inline
-void hdrxor_update(SBMP_State *state, uint8_t rxbyte)
+void hdrxor_update(SBMP_FrmState *state, uint8_t rxbyte)
 {
 	state->rx_hdr_xor ^= rxbyte;
 }
 
 /** Check header xor against received value */
 static inline
-bool hdrxor_verify(SBMP_State *state, uint8_t rx_xor)
+bool hdrxor_verify(SBMP_FrmState *state, uint8_t rx_xor)
 {
 	return state->rx_hdr_xor == rx_xor;
 }
 
 /** Append a byte to the rx buffer */
 static inline
-void append_rx_byte(SBMP_State *state, uint8_t b)
+void append_rx_byte(SBMP_FrmState *state, uint8_t b)
 {
 	state->rx_buffer[state->rx_buffer_i++] = b;
 }
@@ -102,7 +115,7 @@ void set_byte(uint32_t *acc, uint8_t pos, uint8_t byte)
  * Call the message handler with the payload.
  *
  */
-static void call_frame_rx_callback(SBMP_State *state)
+static void call_frame_rx_callback(SBMP_FrmState *state)
 {
 	if (state->rx_handler == NULL) {
 		sbmp_error("frame_handler is null!");
@@ -110,7 +123,7 @@ static void call_frame_rx_callback(SBMP_State *state)
 	}
 
 	state->rx_state = FRM_STATE_WAIT_HANDLER;
-	state->rx_handler(state->rx_buffer, state->rx_length);
+	state->rx_handler(state->rx_buffer, state->rx_length, state->user_token);
 }
 
 /**
@@ -122,7 +135,7 @@ static void call_frame_rx_callback(SBMP_State *state)
  * @param rxbyte
  * @return true if the byte was consumed.
  */
-SBMP_RxStatus sbmp_receive(SBMP_State *state, uint8_t rxbyte)
+SBMP_RxStatus sbmp_receive(SBMP_FrmState *state, uint8_t rxbyte)
 {
 	SBMP_RxStatus retval = SBMP_RX_OK;
 
@@ -248,7 +261,7 @@ SBMP_RxStatus sbmp_receive(SBMP_State *state, uint8_t rxbyte)
 // --- Functions for calculating a SBMP checksum ---
 
 /** Start calculating a checksum */
-static void rx_cksum_begin(SBMP_State *state)
+static void rx_cksum_begin(SBMP_FrmState *state)
 {
 	if (state->rx_cksum_type == SBMP_CKSUM_CRC32) {
 		state->rx_crc_scratch = crc32_begin();
@@ -256,7 +269,7 @@ static void rx_cksum_begin(SBMP_State *state)
 }
 
 /** Update the checksum calculation with an incoming byte */
-static void rx_cksum_update(SBMP_State *state, uint8_t byte)
+static void rx_cksum_update(SBMP_FrmState *state, uint8_t byte)
 {
 	if (state->rx_cksum_type == SBMP_CKSUM_CRC32) {
 		crc32_update(&state->rx_crc_scratch, byte);
@@ -264,7 +277,7 @@ static void rx_cksum_update(SBMP_State *state, uint8_t byte)
 }
 
 /** Stop the checksum calculation, get the result */
-static uint32_t rx_cksum_end(SBMP_State *state)
+static uint32_t rx_cksum_end(SBMP_FrmState *state)
 {
 	if (state->rx_cksum_type == SBMP_CKSUM_CRC32) {
 		return crc32_end(state->rx_crc_scratch);
@@ -274,7 +287,7 @@ static uint32_t rx_cksum_end(SBMP_State *state)
 }
 
 /** Check if the calculated checksum matches the received one */
-static bool rx_cksum_verify(SBMP_State *state, uint32_t received_cksum)
+static bool rx_cksum_verify(SBMP_FrmState *state, uint32_t received_cksum)
 {
 	uint32_t computed = rx_cksum_end(state);
 
@@ -287,7 +300,7 @@ static bool rx_cksum_verify(SBMP_State *state, uint32_t received_cksum)
 }
 
 /** Start calculating a checksum */
-static void tx_cksum_begin(SBMP_State *state)
+static void tx_cksum_begin(SBMP_FrmState *state)
 {
 	if (state->tx_cksum_type == SBMP_CKSUM_CRC32) {
 		state->tx_crc_scratch = crc32_begin();
@@ -295,7 +308,7 @@ static void tx_cksum_begin(SBMP_State *state)
 }
 
 /** Update the checksum calculation with an incoming byte */
-static void tx_cksum_update(SBMP_State *state, uint8_t byte)
+static void tx_cksum_update(SBMP_FrmState *state, uint8_t byte)
 {
 	if (state->tx_cksum_type == SBMP_CKSUM_CRC32) {
 		crc32_update(&state->tx_crc_scratch, byte);
@@ -303,7 +316,7 @@ static void tx_cksum_update(SBMP_State *state, uint8_t byte)
 }
 
 /** Stop the checksum calculation, get the result */
-static uint32_t tx_cksum_end(SBMP_State *state)
+static uint32_t tx_cksum_end(SBMP_FrmState *state)
 {
 	if (state->tx_cksum_type == SBMP_CKSUM_CRC32) {
 		return crc32_end(state->tx_crc_scratch);
@@ -313,7 +326,7 @@ static uint32_t tx_cksum_end(SBMP_State *state)
 
 // ---------------------------------------------------
 
-bool sbmp_start_frame(SBMP_State *state, SBMP_ChecksumType cksum_type, uint16_t length)
+bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16_t length)
 {
 	if (state->tx_state != FRM_STATE_IDLE) {
 		sbmp_error("Tx busy.");
@@ -360,7 +373,7 @@ bool sbmp_start_frame(SBMP_State *state, SBMP_ChecksumType cksum_type, uint16_t 
 }
 
 /** Send a byte in the currently open frame */
-bool sbmp_send_byte(SBMP_State *state, uint8_t byte)
+bool sbmp_send_byte(SBMP_FrmState *state, uint8_t byte)
 {
 	if (state->tx_remain == 0 || state->tx_state != FRM_STATE_PAYLOAD) {
 		return false;
@@ -392,7 +405,7 @@ bool sbmp_send_byte(SBMP_State *state, uint8_t byte)
 }
 
 /** Send a buffer in the currently open frame */
-uint16_t sbmp_send_buffer(SBMP_State *state, const uint8_t *buffer, uint16_t length)
+uint16_t sbmp_send_buffer(SBMP_FrmState *state, const uint8_t *buffer, uint16_t length)
 {
 	if (state->tx_remain == 0 || state->tx_state != FRM_STATE_PAYLOAD) {
 		return false;

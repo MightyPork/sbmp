@@ -27,28 +27,45 @@ typedef enum {
 } SBMP_RxStatus;
 
 /** SBMP internal state (context). Allows having multiple SBMP interfaces. */
-typedef struct SBMP_State_struct SBMP_State;
+typedef struct SBMP_FrmState_struct SBMP_FrmState;
 
 
 /**
- * @brief Allocate & initialize the SBMP internal state struct
+ * @brief Initialize the SBMP internal state struct
  *
- * @param frame_handler : frame rx callback.
- * @param buffer_size : size of the payload buffer
- * @return pointer to the allocated struct
+ * @param state       : Pointer to the state struct to populate. NULL to allocate.
+ * @param buffer      : Buffer for Rx. NULL to allocate.
+ * @param buffer_size : size of the Rx buffer (or how many bytes to allocate)
+ * @param rx_handler  : callback when frame is received
+ * @param tx_func     : function for sending bytes (USART Tx)
+ * @return pointer to the state struct (passed or allocated)
  */
-void sbmp_init(SBMP_State *state,
-		uint8_t *buffer,
+SBMP_FrmState *sbmp_frm_init(
+		SBMP_FrmState *state_or_null,
+		uint8_t *buffer_or_null,
 		uint16_t buffer_size,
-		void (*rx_handler)(uint8_t *payload, uint16_t length),
+		void (*rx_handler)(uint8_t *payload, uint16_t length, void *user_token),
 		void (*tx_func)(uint8_t byte)
 );
+
+/**
+ * @brief Set the user token value.
+ *
+ * The token will be passed to the Frame Rx callback.
+ * Can be used to identify higher level layer instance.
+ *
+ * If the token is not set, NULL will be used in the callback.
+ *
+ * @param state : SBMP state struct
+ * @param token : pointer to arbitrary object.
+ */
+void sbmp_frm_set_user_token(SBMP_FrmState *state, void *token);
 
 /**
  * @brief Reset the SBMP state, discard partial messages (both rx and tx).
  * @param state : SBMP state struct
  */
-void sbmp_reset(SBMP_State *state);
+void sbmp_frm_reset(SBMP_FrmState *state);
 
 /**
  * @brief Handle an incoming byte
@@ -56,7 +73,7 @@ void sbmp_reset(SBMP_State *state);
  * @param state  : SBMP state struct
  * @param rxbyte : byte received
  */
-SBMP_RxStatus sbmp_receive(SBMP_State *state, uint8_t rxbyte);
+SBMP_RxStatus sbmp_receive(SBMP_FrmState *state, uint8_t rxbyte);
 
 /**
  * @brief Start a frame transmission
@@ -66,7 +83,7 @@ SBMP_RxStatus sbmp_receive(SBMP_State *state, uint8_t rxbyte);
  * @param length : payload length
  * @return true if frame was started.
  */
-bool sbmp_start_frame(SBMP_State *state, SBMP_ChecksumType cksum_type, uint16_t length);
+bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16_t length);
 
 /**
  * @brief Send one byte in the open frame.
@@ -78,7 +95,7 @@ bool sbmp_start_frame(SBMP_State *state, SBMP_ChecksumType cksum_type, uint16_t 
  * @param byte  : byte to send
  * @return true on success (value did fit in a frame)
  */
-bool sbmp_send_byte(SBMP_State *state, uint8_t byte);
+bool sbmp_send_byte(SBMP_FrmState *state, uint8_t byte);
 
 /**
  * @brief Send a data buffer (or a part).
@@ -91,14 +108,14 @@ bool sbmp_send_byte(SBMP_State *state, uint8_t byte);
  * @param length : buffer length (byte count)
  * @return actual sent length (until payload is full)
  */
-uint16_t sbmp_send_buffer(SBMP_State *state, const uint8_t *buffer, uint16_t length);
+uint16_t sbmp_send_buffer(SBMP_FrmState *state, const uint8_t *buffer, uint16_t length);
 
 
 
 // ---- Internal frame struct ------------------------
 
 /** SBMP framing layer Rx / Tx state */
-enum SBMP_FrameState {
+enum SBMP_FrmParserState {
 	FRM_STATE_IDLE,         /*!< Ready to start/accept a frame */
 	FRM_STATE_CKSUM_TYPE,   /*!< Rx, waiting for checksum type (1 byte) */
 	FRM_STATE_LENGTH,       /*!< Rx, waiting for payload length (2 bytes) */
@@ -112,7 +129,7 @@ enum SBMP_FrameState {
  * Internal state of the SBMP node
  * Placed in the header to allow static allocation.
  */
-struct SBMP_State_struct {
+struct SBMP_FrmState_struct {
 
 	// --- reception ---
 
@@ -121,7 +138,7 @@ struct SBMP_State_struct {
 
 	uint8_t rx_hdr_xor; /*!< Header xor scratch field */
 
-	enum SBMP_FrameState rx_state;
+	enum SBMP_FrmParserState rx_state;
 
 	uint8_t *rx_buffer;   /*!< Incoming packet buffer */
 	uint16_t rx_buffer_i;   /*!< Buffer cursor */
@@ -133,19 +150,22 @@ struct SBMP_State_struct {
 
 	uint32_t rx_crc_scratch; /*!< crc aggregation field for received data */
 
-	void (*rx_handler)(uint8_t *payload, uint16_t length); /*!< Message received handler */
+	void (*rx_handler)(uint8_t *payload, uint16_t length, void *user_token); /*!< Message received handler */
+
+	void *user_token;    /*!< Arbitrary pointer set by the user. Passed to callbacks.
+							  Can be used to identify instance of a higher layer. */
 
 	// --- transmission ---
 
 	uint16_t tx_remain; /*!< Number of remaining bytes to transmit */
 	SBMP_ChecksumType tx_cksum_type;
 	uint32_t tx_crc_scratch; /*!< crc aggregation field for transmit */
-	enum SBMP_FrameState tx_state;
+	enum SBMP_FrmParserState tx_state;
 
 	// output functions. Only tx_func is needed.
 	void (*tx_func)(uint8_t byte);  /*!< Function to send one byte */
-	void (*tx_lock_func)(void);     /*!< Lock the serial interface tx (called before a frame) */
-	void (*tx_release_func)(void);  /*!< Release the serial interface tx (called after a frame) */
+	void (*tx_lock_func)(void);     /*!< Called before a frame */
+	void (*tx_release_func)(void);  /*!< Called after a frame */
 };
 
 // ------------------------------------

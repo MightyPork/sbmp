@@ -12,7 +12,8 @@ SOURCES += \
     sbmp/crc32.c \
     sbmp/sbmp_frame.c \
     sbmp/sbmp_datagram.c \
-    sbmp/sbmp_common.c
+    sbmp/sbmp_common.c \
+    sbmp/sbmp_session.c
 
 HEADERS += \
     crc32.h \
@@ -20,7 +21,8 @@ HEADERS += \
     sbmp/sbmp_frame.h \
     sbmp/sbmp_datagram.h \
     sbmp/sbmp_frame_internal.h \
-    sbmp/sbmp_common.h
+    sbmp/sbmp_common.h \
+    sbmp/sbmp_session.h
 
 DISTFILES += \
     Makefile \

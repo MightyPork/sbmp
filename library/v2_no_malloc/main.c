@@ -7,13 +7,13 @@
 
 #include "sbmp/sbmp.h"
 
-static void frame_received(uint8_t *payload, uint16_t length);
+static void frame_received(uint8_t *payload, uint16_t length, void *token);
 static void print_char(uint8_t byte);
 static void usart_tx_byte(uint8_t byte);
 
 // SBMP instance
 static uint8_t sbmp_buf[100];
-static SBMP_State sbmp;
+static SBMP_FrmState sbmp;
 
 
 /** To test the DG decoder func - set in main() before sending a datagram frame */
@@ -26,7 +26,9 @@ int main(void)
 
 	// --- Set up SBMP ---
 
-	sbmp_init(&sbmp, sbmp_buf, 100, frame_received, usart_tx_byte);
+	sbmp_frm_init(&sbmp, sbmp_buf, 100, frame_received, usart_tx_byte);
+	// Note: if the struct and/or buffer were NULL, they'd be allocated
+	// In that case, a pointer to the state struct is returned.
 
 
 	// --- Using the framing layer directly ---
@@ -111,8 +113,10 @@ void sbmp_error(const char* format, ...)
 
 
 /** Frame RX callback for SBMP */
-static void frame_received(uint8_t *payload, uint16_t length)
+static void frame_received(uint8_t *payload, uint16_t length, void *user_token)
 {
+	(void)user_token; // ignore
+
 	printf("Received a payload of length %u\n", length);
 
 	if (anticipate_datagram) {

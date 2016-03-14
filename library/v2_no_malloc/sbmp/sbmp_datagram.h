@@ -12,12 +12,14 @@
 #include "sbmp_common.h"
 #include "sbmp_frame.h"
 
+typedef uint8_t SBMP_DgType;
+
 /**
  * SBMP datagram object.
  */
 typedef struct {
 	const uint8_t *payload;        /*!< Datagram payload */
-	uint8_t  type;   /*!< Datagram type ID */
+	SBMP_DgType  type;   /*!< Datagram type ID */
 	uint16_t length; /*!< Datagram length (bytes) */
 	uint16_t session;  /*!< Datagram session number */
 } SBMP_Datagram;
@@ -29,12 +31,12 @@ typedef struct {
  * If the payload is < 3 bytes long, datagram can't be createdn and NULL
  * is returned instead. The caller should then free the payload buffer.
  *
- * @param dg            : datagram variable to populate
+ * @param dg            : datagram variable to populate, or NULL to allocate
  * @param frame_payload : frame payload to parse
  * @param length        : frame payload length
- * @return allocated datagram backed by the frame payload buffer.
+ * @return datagram (allocated if dg was NULL), or NULL if parsing failed.
  */
-bool sbmp_parse_datagram(SBMP_Datagram *dg, const uint8_t *frame_payload, uint16_t length);
+SBMP_Datagram *sbmp_parse_datagram(SBMP_Datagram *dg_or_null, const uint8_t *frame_payload, uint16_t length);
 
 /**
  * @brief Start a datagram (and the frame)
@@ -46,7 +48,7 @@ bool sbmp_parse_datagram(SBMP_Datagram *dg, const uint8_t *frame_payload, uint16
  * @param length     : Datagram payload length (bytes)
  * @return success
  */
-bool sbmp_start_datagram(SBMP_State *state, SBMP_ChecksumType cksum_type, uint16_t session, uint8_t type, uint16_t length);
+bool sbmp_start_datagram(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16_t session, SBMP_DgType type, uint16_t length);
 
 /**
  * @brief Send a complete prepared datagram, also starts the frame.
@@ -56,7 +58,7 @@ bool sbmp_start_datagram(SBMP_State *state, SBMP_ChecksumType cksum_type, uint16
  * @param dg         : Datagram struct containing DG settings and the payload.
  * @return success
  */
-bool sbmp_send_datagram(SBMP_State *state, SBMP_ChecksumType cksum_type, SBMP_Datagram *dg);
+bool sbmp_send_datagram(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, SBMP_Datagram *dg);
 
 
 #endif /* SBMP_DATAGRAM_H */
