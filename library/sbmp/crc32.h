@@ -1,8 +1,11 @@
-#pragma once
+#ifndef CRC32_H
+#define CRC32_H
+
+#include "sbmp_config.h"
+#if SBMP_HAS_CRC32
 
 /**
- * This module is used by the CRC framing layer to calculate
- * checksums.
+ * This module is used by the framing layer to calculate CRC32.
  *
  * If your hardware provides a hardware checksum calculator,
  * you can modify the .c file to use that instead of
@@ -41,3 +44,8 @@ uint32_t crc32_update(uint32_t crc_scratch, uint8_t b);
  * @return the final CRC32 value.
  */
 uint32_t crc32_end(uint32_t crc_scratch);
+
+
+#endif /* SBMP_HAS_CRC32 */
+
+#endif /* CRC32_H */

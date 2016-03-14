@@ -4,7 +4,7 @@
 #include "sbmp_config.h"
 #include "sbmp_checksum.h"
 
-#if SBMP_SUPPORT_CRC32
+#if SBMP_HAS_CRC32
 #include "crc32.h"
 #endif
 
@@ -26,7 +26,7 @@ void cksum_begin(SBMP_ChecksumType type, uint32_t *scratch)
 {
 	switch (type) {
 
-#if SBMP_SUPPORT_CRC32
+#if SBMP_HAS_CRC32
 		case SBMP_CKSUM_CRC32:
 			*scratch = crc32_begin();
 			break;
@@ -46,7 +46,7 @@ void cksum_update(SBMP_ChecksumType type, uint32_t *scratch, uint8_t byte)
 {
 	switch (type) {
 
-#if SBMP_SUPPORT_CRC32
+#if SBMP_HAS_CRC32
 		case SBMP_CKSUM_CRC32:
 			*scratch = crc32_update(*scratch, byte);
 			break;
@@ -66,7 +66,7 @@ void cksum_end(SBMP_ChecksumType type, uint32_t *scratch)
 {
 	switch (type) {
 
-#if SBMP_SUPPORT_CRC32
+#if SBMP_HAS_CRC32
 		case SBMP_CKSUM_CRC32:
 			*scratch = crc32_end(*scratch);
 #endif
@@ -90,7 +90,7 @@ bool cksum_verify(SBMP_ChecksumType type, uint32_t *scratch, uint32_t received_c
 
 	switch (type) {
 
-#if SBMP_SUPPORT_CRC32
+#if SBMP_HAS_CRC32
 		case SBMP_CKSUM_CRC32: // fall-through
 #endif
 		case SBMP_CKSUM_XOR:

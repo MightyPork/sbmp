@@ -3,6 +3,8 @@
 
 /* --- Configuration ------------------- */
 
+
+#ifndef SBMP_LOGGING
 /**
  * @brief Enable logging.
  *
@@ -11,7 +13,10 @@
  * Disable logging to free up memory taken by the messages.
  */
 #define SBMP_LOGGING 1
+#endif
 
+
+#ifndef SBMP_MALLOC
 /**
  * @brief Enable malloc if NULL is passed.
  *
@@ -23,16 +28,24 @@
  * as argument.
  */
 #define SBMP_MALLOC 1
+#endif
 
+
+#ifndef SBMP_HAS_CRC32
 /**
  * @brief Add support for CRC32
  *
  * Disabling CRC32 will reduce program size (for small micros).
+ * If CRC32 is disabled, XOR will be used as the preferred checksum
+ * method.
  *
- * @attention
- * If CRC32 is disabled, do not build & link `crc32.o`!
+ * Received CRC32'd messages will be accepted without checking.
+ *
+ * If handshake is used, the peer will detect that CRC32 is not
+ * supported here, and should start using XOR.
  */
-#define SBMP_SUPPORT_CRC32 1
+#define SBMP_HAS_CRC32 1
+#endif
 
 /* ------------------------------------- */
 

@@ -72,7 +72,7 @@ SBMP_Endpoint *sbmp_ep_init(
 	// our info for the peer
 	ep->buffer_size = buffer_size;
 
-#if SBMP_SUPPORT_CRC32
+#if SBMP_HAS_CRC32
 	ep->peer_preferred_cksum = SBMP_CKSUM_CRC32;
 	ep->preferred_cksum = SBMP_CKSUM_CRC32;
 #else
@@ -101,7 +101,7 @@ void sbmp_ep_set_origin(SBMP_Endpoint *endp, bool bit)
 /** Set the preferred checksum. */
 void sbmp_ep_set_preferred_cksum(SBMP_Endpoint *endp, SBMP_ChecksumType cksum_type)
 {
-	if (cksum_type == SBMP_CKSUM_CRC32 && !SBMP_SUPPORT_CRC32) {
+	if (cksum_type == SBMP_CKSUM_CRC32 && !SBMP_HAS_CRC32) {
 		sbmp_error("CRC32 not avail, using XOR instead.");
 		cksum_type = SBMP_CKSUM_XOR;
 	}
@@ -256,7 +256,7 @@ static void parse_peer_hsk_buf(SBMP_Endpoint *ep, const uint8_t* buf)
 			  ep->peer_preferred_cksum);
 
 	// check if checksum available
-	if (ep->peer_preferred_cksum == SBMP_CKSUM_CRC32 && !SBMP_SUPPORT_CRC32) {
+	if (ep->peer_preferred_cksum == SBMP_CKSUM_CRC32 && !SBMP_HAS_CRC32) {
 		sbmp_error("CRC32 not avail, using XOR as peer's pref cksum.");
 		ep->peer_preferred_cksum = SBMP_CKSUM_XOR;
 	}

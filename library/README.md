@@ -18,3 +18,11 @@ All header files are included in `sbmp.h`, which is the only file you should
 `#include` in your application.
 
 Read comments in `main.c` for an example how to use the library.
+
+Note on configuration & porting
+-------------------------------
+
+You can customize a lot of aspects of SBMP in `sbmp_config.h`.
+
+If you included the library as a submodule, and want to avoid manual edits, you can set
+the options using compiler flags (eg. to disable CRC32: `-DSBMP_HAS_CRC32=0`).

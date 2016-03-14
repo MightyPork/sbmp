@@ -1,5 +1,9 @@
 #include "crc32.h"
 
+#include "sbmp_config.h"
+
+#if SBMP_HAS_CRC32
+
 // This file was downloaded from some forum, and modified a bit.
 
 /**********************************************************************\
@@ -135,3 +139,5 @@ uint32_t crc32buf(uint8_t *buf, size_t len)
 
 	return crc32_end(scratch);
 }
+
+#endif /* SBMP_HAS_CRC32 */
