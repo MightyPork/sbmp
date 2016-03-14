@@ -13,6 +13,9 @@
 #include "sbmp_frame.h"
 
 typedef uint8_t SBMP_DgType;
+#define SBMP_DG_HSK_START    0x00
+#define SBMP_DG_HSK_ACCEPT   0x01
+#define SBMP_DG_HSK_CONFLICT 0x02
 
 /**
  * SBMP datagram object.

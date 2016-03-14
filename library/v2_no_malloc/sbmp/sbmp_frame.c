@@ -20,11 +20,10 @@ static uint32_t tx_cksum_end(SBMP_FrmState *state);
 
 /** Allocate the state struct & init all fields */
 SBMP_FrmState *sbmp_frm_init(
-	SBMP_FrmState *state,
-	uint8_t *buffer, uint16_t buffer_size,
-	void (*rx_handler)(uint8_t *, uint16_t, void *),
-	void (*tx_func)(uint8_t)
-)
+		SBMP_FrmState *state,
+		uint8_t *buffer, uint16_t buffer_size,
+		void (*rx_handler)(uint8_t *, uint16_t, void *),
+		void (*tx_func)(uint8_t))
 {
 	if (state == NULL) {
 		// caller wants us to allocate it
@@ -372,6 +371,26 @@ bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16
 	return true;
 }
 
+/** End frame and enter idle mode */
+static void end_frame(SBMP_FrmState *state)
+{
+	if (state->tx_cksum_type != SBMP_CKSUM_NONE) {
+		uint32_t cksum = tx_cksum_end(state);
+
+		// send the checksum
+		state->tx_func(cksum & 0xFF);
+		state->tx_func((cksum >> 8) & 0xFF);
+		state->tx_func((cksum >> 16) & 0xFF);
+		state->tx_func((cksum >> 24) & 0xFF);
+	}
+
+	if (state->tx_release_func) {
+		state->tx_release_func();
+	}
+
+	state->tx_state = FRM_STATE_IDLE; // tx done
+}
+
 /** Send a byte in the currently open frame */
 bool sbmp_send_byte(SBMP_FrmState *state, uint8_t byte)
 {
@@ -384,21 +403,7 @@ bool sbmp_send_byte(SBMP_FrmState *state, uint8_t byte)
 	state->tx_remain--;
 
 	if (state->tx_remain == 0) {
-		if (state->tx_cksum_type != SBMP_CKSUM_NONE) {
-			uint32_t cksum = tx_cksum_end(state);
-
-			// send the checksum
-			state->tx_func(cksum & 0xFF);
-			state->tx_func((cksum >> 8) & 0xFF);
-			state->tx_func((cksum >> 16) & 0xFF);
-			state->tx_func((cksum >> 24) & 0xFF);
-		}
-
-		if (state->tx_release_func) {
-			state->tx_release_func();
-		}
-
-		state->tx_state = FRM_STATE_IDLE; // tx done
+		end_frame(state); // checksum & go idle
 	}
 
 	return true;
@@ -407,8 +412,17 @@ bool sbmp_send_byte(SBMP_FrmState *state, uint8_t byte)
 /** Send a buffer in the currently open frame */
 uint16_t sbmp_send_buffer(SBMP_FrmState *state, const uint8_t *buffer, uint16_t length)
 {
-	if (state->tx_remain == 0 || state->tx_state != FRM_STATE_PAYLOAD) {
-		return false;
+	if (state->tx_state != FRM_STATE_PAYLOAD) {
+		return false; // invalid call
+	}
+
+	if (length == 0) {
+		end_frame(state); // checksum & go idle
+		return 0;
+	}
+
+	if (state->tx_remain == 0) {
+		return false; // write past EOF (this shouldn't happen)
 	}
 
 	uint16_t remain = length;
