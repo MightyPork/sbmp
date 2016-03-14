@@ -1,5 +1,6 @@
 #include "crc32.h"
 
+// This file was downloaded from some forum, and modified a bit.
 
 /**********************************************************************\
 |* Demonstration program to compute the 32-bit CRC used as the frame  *|
@@ -109,41 +110,24 @@ static uint32_t crc_32_tab[] = { /* CRC polynomial 0xedb88320 */
 
 #define UPDC32(octet, crc) (crc_32_tab[((crc) ^ ((uint8_t)octet)) & 0xff] ^ ((crc) >> 8))
 
-
 uint32_t crc32_begin(void)
 {
 	return 0xFFFFFFFF;
 }
 
-
-void crc32_update(uint32_t *old_crc, uint8_t ch)
+void crc32_update(uint32_t *crc_scratch, uint8_t ch)
 {
-	uint32_t newcrc = UPDC32(ch, *old_crc);
-	*old_crc = newcrc;
+	uint32_t newcrc = UPDC32(ch, *crc_scratch);
+	*crc_scratch = newcrc;
 }
 
-
-uint32_t crc32_end(uint32_t old_crc)
+uint32_t crc32_end(uint32_t crc_scratch)
 {
-	return ~old_crc;
+	return ~crc_scratch;
 }
-
-
 
 uint32_t crc32buf(uint8_t *buf, size_t len)
 {
-	/*
-	register uint32_t oldcrc32;
-
-	oldcrc32 = 0xFFFFFFFF;
-
-	for (; len; --len, ++buf) {
-		oldcrc32 = UPDC32(*buf, oldcrc32);
-	}
-
-	return ~oldcrc32;
-	*/
-
 	uint32_t oldcrc32 = crc32_begin();
 
 	for (; len; --len, ++buf) {

@@ -21,9 +21,9 @@ HEADERS += \
     sbmp/sbmp.h \
     sbmp/sbmp_frame.h \
     sbmp/sbmp_datagram.h \
-    sbmp/sbmp_frame_internal.h \
     sbmp/sbmp_common.h \
-    sbmp/sbmp_session.h
+    sbmp/sbmp_session.h \
+    sbmp/crc32.h
 
 DISTFILES += \
     Makefile \

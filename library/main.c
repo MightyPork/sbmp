@@ -1,5 +1,5 @@
 /**
- * Example of using the session layer.
+ * Example of using the session layer of SBMP
  *
  * This example sets up two endpoints (devices) and virtually
  * connects them to make a loop.

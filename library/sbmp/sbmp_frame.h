@@ -2,7 +2,12 @@
 #define SBMP_FRAME_H
 
 /**
- * SBMP Framing layer (without malloc).
+ * SBMP Frame parser.
+ *
+ * This is the lowest level of the SBMP stack.
+ *
+ * You can use the frame parser on it's own, if you don't the higher layers.
+ * You will still get checksums and other benefits.
  */
 
 #include <stdint.h>

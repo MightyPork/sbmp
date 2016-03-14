@@ -4,7 +4,12 @@
 // protos
 static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg);
 
+// lsb, msb for uint16_t
+#define U16_LSB(x) ((x) & 0xFF)
+#define U16_MSB(x) ((x >> 8) & 0xFF)
 
+
+/** Rx handler that is assigned to the framing layer */
 static void ep_rx_handler(uint8_t *buf, uint16_t len, void *token)
 {
 	// endpoint pointer is stored in the user token

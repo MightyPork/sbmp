@@ -1,6 +1,19 @@
 #ifndef SBMP_SESSION_H
 #define SBMP_SESSION_H
 
+/**
+ * SBMP session layer
+ *
+ * This layer provides an abstraction over all of SBMP.
+ *
+ * Start by creating "endpoint" with sbmp_ep_init(), then configure and enable it.
+ *
+ * Next you can trigger a handshake, which assigns your endpoint the origin bit,
+ * and obtains information about your peer (it's buffer size and preferred checksum).
+ *
+ * You can still interact with the framing layer directly, but it shouldn't be needed.
+ */
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <malloc.h>

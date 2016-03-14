@@ -1,4 +1,4 @@
-/*
+/**
  * This is an example of using the framing and datagram layer of SBMP.
  *
  * The framing layer can be used on it's own to ensure data integrity.

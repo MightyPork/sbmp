@@ -2,9 +2,13 @@
 #define SBMP_DATAGRAM_H
 
 /**
- * SBMP datagram utilities
+ * SBMP datagram layer
  *
- * The transmit functions require the framing layer.
+ * This layer is coupled to the framing layer, and
+ * builds a datagram abstraction on top of it.
+ *
+ * This layer sits right under the session layer,
+ * and is not very useful on it's own.
  */
 
 #include <stdint.h>
@@ -21,10 +25,10 @@ typedef uint8_t SBMP_DgType;
  * SBMP datagram object.
  */
 typedef struct {
-	const uint8_t *payload;        /*!< Datagram payload */
-	SBMP_DgType  type;   /*!< Datagram type ID */
-	uint16_t length; /*!< Datagram length (bytes) */
-	uint16_t session;  /*!< Datagram session number */
+	const uint8_t *payload; /*!< Datagram payload */
+	SBMP_DgType type;       /*!< Datagram type ID */
+	uint16_t length;        /*!< Datagram length (bytes) */
+	uint16_t session;       /*!< Datagram session number */
 } SBMP_Datagram;
 
 
