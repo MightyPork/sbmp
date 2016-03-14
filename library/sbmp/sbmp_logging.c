@@ -1,6 +1,9 @@
-#include "sbmp_logging.h"
 #include <stdio.h>
 #include <stdarg.h>
+
+#include "sbmp_config.h"
+#include "sbmp_logging.h"
+
 
 #if SBMP_LOGGING
 

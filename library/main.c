@@ -84,16 +84,16 @@ int main(void)
 
 	// Alice sends ["HELLO", type 100] to Bob
 	uint16_t sesn;
-	sbmp_ep_send_message(alice, 100, "HELLO", 5, &sesn, NULL);
+	sbmp_ep_send_message(alice, 100, (uint8_t*)"HELLO", 5, &sesn, NULL);
 	printf("Alice sent a message with S.N. %d\n", sesn);
 
 	// Assume it was received, bob sends a reply
 	char *msg = "Sup Alice, how u doin";
-	sbmp_ep_send_response(bob, 113, msg, (uint16_t)strlen(msg), sesn, NULL);
+	sbmp_ep_send_response(bob, 113, (uint8_t*)msg, (uint16_t)strlen(msg), sesn, NULL);
 
 	// the other way
 	msg = "HELLO, ALICE!";
-	sbmp_ep_send_message(bob, 100, msg, (uint16_t)strlen(msg), NULL, NULL); // NULL - we con't care what session nr it is
+	sbmp_ep_send_message(bob, 100, (uint8_t*)msg, (uint16_t)strlen(msg), NULL, NULL); // NULL - we con't care what session nr it is
 
 	printf("Done.\n");
 }

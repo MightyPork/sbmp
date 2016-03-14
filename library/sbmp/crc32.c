@@ -115,10 +115,9 @@ uint32_t crc32_begin(void)
 	return 0xFFFFFFFF;
 }
 
-void crc32_update(uint32_t *crc_scratch, uint8_t ch)
+uint32_t crc32_update(uint32_t crc_scratch, uint8_t ch)
 {
-	uint32_t newcrc = UPDC32(ch, *crc_scratch);
-	*crc_scratch = newcrc;
+	return UPDC32(ch, crc_scratch);
 }
 
 uint32_t crc32_end(uint32_t crc_scratch)
@@ -128,11 +127,11 @@ uint32_t crc32_end(uint32_t crc_scratch)
 
 uint32_t crc32buf(uint8_t *buf, size_t len)
 {
-	uint32_t oldcrc32 = crc32_begin();
+	uint32_t scratch = crc32_begin();
 
 	for (; len; --len, ++buf) {
-		crc32_update(&oldcrc32, *buf);
+		scratch = crc32_update(scratch, *buf);
 	}
 
-	return crc32_end(oldcrc32);
+	return crc32_end(scratch);
 }

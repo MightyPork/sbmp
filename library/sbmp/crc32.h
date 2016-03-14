@@ -31,8 +31,9 @@ uint32_t crc32_begin(void);
  * @brief Update the CRC32 scratch value with a byte of the data block.
  * @param crc_scratch : old scratch value pointer.
  * @param b : received byte
+ * @return updated scratch
  */
-void crc32_update(uint32_t *crc_scratch, uint8_t b);
+uint32_t crc32_update(uint32_t crc_scratch, uint8_t b);
 
 /**
  * @brief Finish the CRC calculation.

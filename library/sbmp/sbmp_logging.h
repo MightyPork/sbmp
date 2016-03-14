@@ -1,7 +1,7 @@
 #ifndef SBMP_COMMON_H
 #define SBMP_COMMON_H
 
-#include "sbmp.h"
+#include "sbmp_config.h"
 
 /**
  * SBMP logging utils

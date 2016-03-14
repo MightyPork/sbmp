@@ -16,9 +16,11 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <malloc.h>
+#include <stdlib.h>
 
-#include "sbmp.h"
+#include "sbmp_config.h"
+#include "sbmp_datagram.h"
+#include "sbmp_frame.h"
 
 typedef enum {
 	SBMP_HSK_NOT_STARTED = 0,     /*!< Initial state, unconfigured */

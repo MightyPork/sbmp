@@ -1,9 +1,10 @@
-CFLAGS += -g
+CFLAGS += -g -Wall -Wextra
 
 OBJECTS = \
 	main.o \
 	sbmp/crc32.o \
 	sbmp/sbmp_logging.o \
+	sbmp/sbmp_checksum.o \
 	sbmp/sbmp_frame.o \
 	sbmp/sbmp_datagram.o \
 	sbmp/sbmp_session.o

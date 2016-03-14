@@ -1,5 +1,8 @@
-#include "sbmp_session.h"
 #include <inttypes.h>
+
+#include "sbmp_config.h"
+#include "sbmp_logging.h"
+#include "sbmp_session.h"
 
 // protos
 static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg);
@@ -73,8 +76,8 @@ SBMP_Endpoint *sbmp_ep_init(
 	ep->peer_preferred_cksum = SBMP_CKSUM_CRC32;
 	ep->preferred_cksum = SBMP_CKSUM_CRC32;
 #else
-	ep->peer_preferred_cksum = SBMP_CKSUM_NONE;
-	ep->preferred_cksum = SBMP_CKSUM_NONE;
+	ep->peer_preferred_cksum = SBMP_CKSUM_XOR;
+	ep->preferred_cksum = SBMP_CKSUM_XOR;
 #endif
 
 	return ep;

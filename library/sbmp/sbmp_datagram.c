@@ -1,6 +1,9 @@
 #include <stdlib.h>
+#include <stdint.h>
 
-#include "sbmp.h"
+#include "sbmp_config.h"
+#include "sbmp_logging.h"
+#include "sbmp_datagram.h"
 
 SBMP_Datagram *sbmp_parse_datagram(SBMP_Datagram *dg, const uint8_t *payload, uint16_t length)
 {

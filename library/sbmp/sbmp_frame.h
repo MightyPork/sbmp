@@ -14,17 +14,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "sbmp.h"
-
-/** Checksum types */
-typedef enum {
-	SBMP_CKSUM_NONE = 0,   /*!< No checksum */
-
-#if SBMP_SUPPORT_CRC32
-	SBMP_CKSUM_CRC32 = 32, /*!< ISO CRC-32 */
-#endif
-
-} SBMP_ChecksumType;
+#include "sbmp_config.h"
+#include "sbmp_checksum.h"
 
 /**
  * Status returned from the byte rx function.
@@ -139,6 +130,7 @@ enum SBMP_FrmParserState {
 	FRM_STATE_LENGTH,       /*!< Rx, waiting for payload length (2 bytes) */
 	FRM_STATE_HDRXOR,       /*!< Rx, waiting for header XOR (1 byte) */
 	FRM_STATE_PAYLOAD,      /*!< Rx or Tx, payload rx/tx in progress. */
+	FRM_STATE_DISCARD,      /*!< Discard rx_length worth of bytes, then end */
 	FRM_STATE_CKSUM,        /*!< Rx, waiting for checksum (4 bytes) */
 	FRM_STATE_WAIT_HANDLER, /*!< Rx, waiting for rx callback to process the payload */
 };
@@ -184,8 +176,6 @@ struct SBMP_FrmState_struct {
 
 	// output functions. Only tx_func is needed.
 	void (*tx_func)(uint8_t byte);  /*!< Function to send one byte */
-	void (*tx_lock_func)(void);     /*!< Called before a frame */
-	void (*tx_release_func)(void);  /*!< Called after a frame */
 };
 
 // ------------------------------------

@@ -1,24 +1,17 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdarg.h>
 #include <inttypes.h>
 
-#include "sbmp.h"
-
-#if SBMP_SUPPORT_CRC32
-#include "crc32.h"
-#endif
+#include "sbmp_config.h"
+#include "sbmp_logging.h"
+#include "sbmp_checksum.h"
+#include "sbmp_frame.h"
 
 // protos
 static void reset_rx_state(SBMP_FrmState *state);
 static void reset_tx_state(SBMP_FrmState *state);
 static void call_frame_rx_callback(SBMP_FrmState *state);
-static void rx_cksum_begin(SBMP_FrmState *state);
-static void rx_cksum_update(SBMP_FrmState *state, uint8_t byte);
-static uint32_t rx_cksum_end(SBMP_FrmState *state);
-static bool rx_cksum_verify(SBMP_FrmState *state, uint32_t received_cksum);
-static void tx_cksum_begin(SBMP_FrmState *state);
-static void tx_cksum_update(SBMP_FrmState *state, uint8_t byte);
-static uint32_t tx_cksum_end(SBMP_FrmState *state);
 
 
 /** Allocate the state struct & init all fields */
@@ -57,8 +50,6 @@ SBMP_FrmState *sbmp_frm_init(
 	state->user_token = NULL; // NULL if not set
 
 	state->tx_func = tx_func;
-	state->tx_lock_func = NULL;
-	state->tx_release_func = NULL;
 
 	state->enabled = false;
 
@@ -234,17 +225,27 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmState *state, uint8_t rxbyte)
 			// Check if not too long
 			if (state->rx_length > state->rx_buffer_cap) {
 				sbmp_error("Rx packet too long - %"PRIu16"!", (uint16_t)state->rx_length);
-				reset_rx_state(state); // abort
+				// discard the rest + checksum
+				state->rx_state = FRM_STATE_DISCARD;
+				state->rx_length += checksum_length(state->rx_cksum_type);
 				break;
 			}
 
 			state->rx_state = FRM_STATE_PAYLOAD;
-			rx_cksum_begin(state);
+			cksum_begin(state->rx_cksum_type, &state->rx_crc_scratch);
+			break;
+
+		case FRM_STATE_DISCARD:
+			state->rx_buffer_i++;
+			if (state->rx_buffer_i == state->rx_length) {
+				// done
+				reset_rx_state(state); // go IDLE
+			}
 			break;
 
 		case FRM_STATE_PAYLOAD:
 			append_rx_byte(state, rxbyte);
-			rx_cksum_update(state, rxbyte);
+			cksum_update(state->rx_cksum_type, &state->rx_crc_scratch, rxbyte);
 
 			if (state->rx_buffer_i == state->rx_length) {
 				// payload rx complete
@@ -272,9 +273,9 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmState *state, uint8_t rxbyte)
 			set_byte(&state->mb_buf, state->mb_cnt++, rxbyte);
 
 			// if last of the MB field
-			if (state->mb_cnt == 4) {
+			if (state->mb_cnt == checksum_length(state->rx_cksum_type)) {
 
-				if (rx_cksum_verify(state, state->mb_buf)) {
+				if (cksum_verify(state->rx_cksum_type, &state->rx_crc_scratch, state->mb_buf)) {
 					call_frame_rx_callback(state);
 				} else {
 					sbmp_error("Rx checksum mismatch!");
@@ -289,109 +290,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmState *state, uint8_t rxbyte)
 	return retval;
 }
 
-// --- Functions for calculating a SBMP checksum ---
-
-/** Start calculating a checksum */
-static void rx_cksum_begin(SBMP_FrmState *state)
-{
-	switch (state->rx_cksum_type) {
-#if SBMP_SUPPORT_CRC32
-		case SBMP_CKSUM_CRC32:
-			state->rx_crc_scratch = crc32_begin();
-			break;
-#endif
-		default:
-			;
-	}
-}
-
-/** Update the checksum calculation with an incoming byte */
-static void rx_cksum_update(SBMP_FrmState *state, uint8_t byte)
-{
-	switch (state->rx_cksum_type) {
-#if SBMP_SUPPORT_CRC32
-		case SBMP_CKSUM_CRC32:
-			crc32_update(&state->rx_crc_scratch, byte);
-			break;
-#endif
-		default:
-			;
-	}
-}
-
-/** Stop the checksum calculation, get the result */
-static uint32_t rx_cksum_end(SBMP_FrmState *state)
-{
-	switch (state->rx_cksum_type) {
-#if SBMP_SUPPORT_CRC32
-		case SBMP_CKSUM_CRC32:
-			return crc32_end(state->rx_crc_scratch);
-#endif
-		default:
-			return 0;
-	}
-}
-
-/** Check if the calculated checksum matches the received one */
-static bool rx_cksum_verify(SBMP_FrmState *state, uint32_t received_cksum)
-{
-	uint32_t computed = rx_cksum_end(state);
-
-	switch (state->rx_cksum_type) {
-#if SBMP_SUPPORT_CRC32
-		case SBMP_CKSUM_CRC32:
-			return (computed == received_cksum);
-			break;
-#endif
-		default:
-			// unknown checksum type
-			return true; // assume it's OK
-	}
-}
-
-/** Start calculating a checksum */
-static void tx_cksum_begin(SBMP_FrmState *state)
-{
-	switch (state->tx_cksum_type) {
-#if SBMP_SUPPORT_CRC32
-		case SBMP_CKSUM_CRC32:
-			state->tx_crc_scratch = crc32_begin();
-			break;
-#endif
-		default:
-			state->tx_crc_scratch = 0; // clear
-	}
-}
-
-/** Update the checksum calculation with an incoming byte */
-static void tx_cksum_update(SBMP_FrmState *state, uint8_t byte)
-{
-	switch (state->tx_cksum_type) {
-#if SBMP_SUPPORT_CRC32
-		case SBMP_CKSUM_CRC32:
-			crc32_update(&state->tx_crc_scratch, byte);
-			break;
-#endif
-		default:
-			;
-	}
-}
-
-/** Stop the checksum calculation, get the result */
-static uint32_t tx_cksum_end(SBMP_FrmState *state)
-{
-	switch (state->tx_cksum_type) {
-#if SBMP_SUPPORT_CRC32
-		case SBMP_CKSUM_CRC32:
-			return crc32_end(state->tx_crc_scratch);
-#endif
-		default:
-			return 0;
-	}
-}
-
-// ---------------------------------------------------
-
+/** Send a frame header */
 bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16_t length)
 {
 	if (!state->enabled) {
@@ -415,10 +314,6 @@ bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16
 	state->tx_remain = length;
 	state->tx_state = FRM_STATE_PAYLOAD;
 
-	if (state->tx_lock_func) {
-		state->tx_lock_func();
-	}
-
 	// Send the header
 
 	uint16_t len = (uint16_t) length;
@@ -438,7 +333,7 @@ bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16
 
 	state->tx_func(hdr_xor);
 
-	tx_cksum_begin(state);
+	cksum_begin(state->tx_cksum_type, &state->tx_crc_scratch);
 
 	return true;
 }
@@ -446,18 +341,24 @@ bool sbmp_start_frame(SBMP_FrmState *state, SBMP_ChecksumType cksum_type, uint16
 /** End frame and enter idle mode */
 static void end_frame(SBMP_FrmState *state)
 {
-	if (state->tx_cksum_type != SBMP_CKSUM_NONE) {
-		uint32_t cksum = tx_cksum_end(state);
+	cksum_end(state->tx_cksum_type, &state->tx_crc_scratch);
 
-		// send the checksum
-		state->tx_func(cksum & 0xFF);
-		state->tx_func((cksum >> 8) & 0xFF);
-		state->tx_func((cksum >> 16) & 0xFF);
-		state->tx_func((cksum >> 24) & 0xFF);
-	}
+	uint32_t cksum = state->tx_crc_scratch;
 
-	if (state->tx_release_func) {
-		state->tx_release_func();
+	switch (state->tx_cksum_type) {
+		case SBMP_CKSUM_NONE:
+			break; // do nothing
+
+		case SBMP_CKSUM_XOR:
+			// 1-byte checksum
+			state->tx_func(cksum & 0xFF);
+			break;
+
+		case SBMP_CKSUM_CRC32:
+			state->tx_func(cksum & 0xFF);
+			state->tx_func((cksum >> 8) & 0xFF);
+			state->tx_func((cksum >> 16) & 0xFF);
+			state->tx_func((cksum >> 24) & 0xFF);
 	}
 
 	state->tx_state = FRM_STATE_IDLE; // tx done
@@ -476,7 +377,7 @@ bool sbmp_send_byte(SBMP_FrmState *state, uint8_t byte)
 	}
 
 	state->tx_func(byte);
-	tx_cksum_update(state, byte);
+	cksum_update(state->tx_cksum_type, &state->tx_crc_scratch, byte);
 	state->tx_remain--;
 
 	if (state->tx_remain == 0) {
