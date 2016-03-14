@@ -14,7 +14,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#include "sbmp_common.h"
+#include "sbmp.h"
 
 /** Checksum types */
 typedef enum {

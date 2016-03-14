@@ -143,27 +143,27 @@ static void bob_tx(uint8_t byte)
 
 // --- debug & utils ---
 
-/** Error print function [ overriding weak stub from SBMP ] */
-void sbmp_error(const char* format, ...)
-{
-	printf("[SBMP] [E] ");
-	va_list va;
-	va_start(va, format);
-	vprintf(format, va);
-	va_end(va);
-	printf("\n");
-}
+///** Error print function [ overriding weak stub from SBMP ] */
+//void sbmp_error(const char* format, ...)
+//{
+//	printf("[SBMP] [E] ");
+//	va_list va;
+//	va_start(va, format);
+//	vprintf(format, va);
+//	va_end(va);
+//	printf("\n");
+//}
 
-/** Info print function [ overriding weak stub from SBMP ] */
-void sbmp_info(const char* format, ...)
-{
-	printf("[SBMP] [i] ");
-	va_list va;
-	va_start(va, format);
-	vprintf(format, va);
-	va_end(va);
-	printf("\n");
-}
+///** Info print function [ overriding weak stub from SBMP ] */
+//void sbmp_info(const char* format, ...)
+//{
+//	printf("[SBMP] [i] ");
+//	va_list va;
+//	va_start(va, format);
+//	vprintf(format, va);
+//	va_end(va);
+//	printf("\n");
+//}
 
 /** Print a byte hexdump-style */
 static void print_char(uint8_t byte)

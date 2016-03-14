@@ -1,9 +1,17 @@
 #ifndef SBMP_COMMON_H
 #define SBMP_COMMON_H
 
+#include "sbmp.h"
+
 /**
  * SBMP common utilities etc.
  */
+
+
+#if SBMP_LOGGING
+
+// Define logging prototypes
+// You can override those in the application code
 
 /**
  * @brief Error print function, can be replaced by custom one.
@@ -26,6 +34,15 @@ sbmp_error(const char* format, ...);
  */
 extern void __attribute__((weak, format(printf, 1, 2)))
 sbmp_info(const char* format, ...);
+
+
+#else /* SBMP_LOGGING */
+
+// do-nothing definitions
+#define sbmp_error(...)
+#define sbmp_info(...)
+
+#endif /* SBMP_LOGGING */
 
 
 #endif /* SBMP_COMMON_H */

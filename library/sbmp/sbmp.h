@@ -8,6 +8,16 @@
  * #include in your application code.
  */
 
+
+// --- Configuration --- //
+
+#define SBMP_LOGGING 1
+
+
+
+// --------------------- //
+
+
 // Common utils & the frame parser
 #include "sbmp_common.h"
 #include "sbmp_frame.h"

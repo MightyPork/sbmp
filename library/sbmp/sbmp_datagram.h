@@ -13,8 +13,7 @@
 
 #include <stdint.h>
 
-#include "sbmp_common.h"
-#include "sbmp_frame.h"
+#include "sbmp.h"
 
 typedef uint8_t SBMP_DgType;
 #define SBMP_DG_HSK_START    0x00
