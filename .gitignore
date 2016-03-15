@@ -4,6 +4,10 @@
 *.obj
 *.elf
 
+*.d
+*.lst
+*.dis
+
 # Precompiled Headers
 *.gch
 *.pch
