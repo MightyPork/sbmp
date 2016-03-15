@@ -21,6 +21,21 @@ communication.
   ARM or AVR - "Arduino" - based). This allows to build a variety of PC 
   front-ends with a standartised binary interface.
 
+### Is SBMP for you?
+
+If you want any of the following, SBMP may be for you:
+
+- Reliable point-to-point communication, with CRC32 or XOR checksums
+- Interleaved sessions (ask for A, receive some status updates, ask for B, receive A, receive B) - without losing track of what's a reply to what.
+- Extensible - put whatever data you want in the message payload. SBMP works like a wrapper.
+- Portable - the same library code can run on PC, Arduino, STM32... - no worries about compatibility
+
+However, it's **not good for everything**, eg if you want:
+
+- Low overhead USART communication - SBMP has some overhead, ie. checksums, session ID...
+- Very short messages - using a special protocol may be overkill
+- Minimal memory footprint - SBMP takes roughly 2.5 kB of flash on AVR, after disabling CRC32, debugging and malloc. This is a concern only if you're really constrained.
+
 ## Specification
 
 The current specification (draft) is in the [spec](spec/) folder.
