@@ -2,7 +2,7 @@
 
 <i>
 Simple Binary Messaging Protocol specification <br>
-rev. 1.2, 14 March 2016
+rev. 1.3, 15 March 2016
 </i>
 
 ## Conventions
@@ -18,7 +18,7 @@ The protocol is designed for serial interfaces (USART based), such as RS232.
 Naturally it can be used for inter-MPU communication using the built-in USART
 peripherals.
 
-- [Framing layer for USART](FRAMING_LAYER.md)
+- [Framing layer](FRAMING_LAYER.md)
 
 
 ## Session layer
@@ -32,7 +32,7 @@ before receiving a reply.
 
 ## Datagram types and structure
 
-TBD
+- [Session specification](DATAGRAMS.md)
 
 *End of file*
 

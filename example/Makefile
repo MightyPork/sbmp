@@ -16,5 +16,4 @@ run: main
 
 clean:
 	rm -f *.o *.lst main
-	cd sbmp
-	rm -f *.o *.lst main
+	rm -f sbmp/*.o

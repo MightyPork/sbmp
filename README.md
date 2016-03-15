@@ -27,6 +27,10 @@ The current specification (draft) is in the [spec](spec/) folder.
 
 ## Library
 
-An example implementation of SBMP is in the [library](library/) folder.
+A reference implementation of SBMP is in the [library](library/) folder.
+
+The library works on AVR (ATmega328p) and should also work on STM32
+or any other microcontroller. Naturally it works also on desktop, 
+if you build it with GCC.
 
 

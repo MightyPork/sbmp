@@ -1,8 +1,8 @@
-# SBMP framing layer for USART
+# SBMP framing layer
 
 <i>
 Simple Binary Messaging Protocol specification <br>
-rev. 1.2, 14 March 2016
+rev. 1.3, 15 March 2016
 </i>
 
 SBMP is designed for use on USART-based interfaces, such as simple TTL U(S)ART
@@ -14,6 +14,9 @@ interfaces.
 
 The standard configuration is *115200 baud, 8 bits, 1 stop bit, no parity*.
 
+It should be possible to use SBMP also over SPI, however that possibility
+hasn't been given much consideration, so it's not tested.
+
 
 ## Packet structure
 
@@ -22,15 +25,15 @@ Each message is contained in a binary packet (frame) of the following structure:
 ```none
 +-------+-----------------------+----------------+------------+---------+------------------+
 | Start | Payload checksum type | Payload length | Header XOR | Payload | Payload checksum |
-| 0x01  | 1 byte                | 2 bytes        | 1 byte     |         | (0 or 4 B)       |
+| 0x01  | 1 byte                | 2 bytes        | 1 byte     |         | (0 - 4 B)        |
 +-------+-----------------------+----------------+------------+---------+------------------+
 ```
 
-The `Header XOR` field contains XOR of the preceding 4 bytes. It's used to check
+The `Header XOR` field contains XOR of all the preceding bytes. It's used to check
 integrity of the header. If the `Header XOR` does not match, the receiver MUST
 discard the packet.
 
-The payload checksum type is specified in in the header, so the checksum can be
+The payload checksum type is specified in the header, so the checksum can be
 calculated on-the-fly by the receiving party.
 
 *If the checksum type is 0, the checksum field is omitted.*
@@ -41,15 +44,17 @@ calculated on-the-fly by the receiving party.
 Checksum type codes:
 
 - 0 - no checksum. *The checksum field is omitted.*
-- 32 - CRC32 (ANSI)
-
-Numbers 100-255 can be used for custom checksum types. Numbers < 100 are
-reserved for possible use in future versions of this specification.
+- 1 - XOR. length = 1.
+- 32 - CRC32 (ANSI). length = 4.
 
 **If possible, CRC32 should be used.**
 
-If a receiver does not support the checksum type used, it should simply ignore
-it.
+Some processors (like the ATmega328P) can disable CRC32 to save memory,
+and use XOR instead. This degrades the error detection ability, but also
+significantly reduces program size.
+
+If a receiver does not support the checksum type used, it should assume it is 4 bytes
+long, and simply discard it.
 
 *End of file.*
 
