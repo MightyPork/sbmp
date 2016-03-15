@@ -14,14 +14,16 @@ SBMP_Datagram *sbmp_dg_parse(SBMP_Datagram *dg, const uint8_t *payload, uint16_t
 
 	// S.N. (2 B) | Dg Type (1 B) | Payload
 
+#if SBMP_MALLOC
 	if (dg == NULL) {
-		// request to allocate
-		#if SBMP_MALLOC
-			dg = malloc(sizeof(SBMP_Datagram));
-		#else
-			return NULL; // fail
-		#endif
+	// request to allocate
+		dg = malloc(sizeof(SBMP_Datagram));
 	}
+#else
+	if (dg == NULL) {
+		return NULL; // fail
+	}
+#endif
 
 	dg->session = (uint16_t)((payload[0]) | (payload[1] << 8));
 	dg->type = payload[2];
