@@ -13,6 +13,8 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg);
 
 // length of the payload sent with a handshake packet.
 #define HSK_PAYLOAD_LEN 3
+// Datagram header length - 2 B sesn, 1 B type
+#define DATAGRA_HEADER_LEN 3
 
 
 /** Rx handler that is assigned to the framing layer */
@@ -163,8 +165,10 @@ static uint16_t next_session(SBMP_Endpoint *ep)
 /** Start a message as a reply */
 bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t sesn)
 {
-	if (length > ep->peer_buffer_size - HSK_PAYLOAD_LEN) {
-		sbmp_error("Msg too long (%"PRIu16" B), peer accepts max %"PRIu16" B.", length, ep->peer_buffer_size - HSK_PAYLOAD_LEN);
+	uint16_t peer_accepts = ep->peer_buffer_size - DATAGRA_HEADER_LEN;
+
+	if (length > peer_accepts) {
+		sbmp_error("Msg too long (%"PRIu16" B), peer accepts max %"PRIu16" B.", length, peer_accepts);
 		return false;
 	}
 
