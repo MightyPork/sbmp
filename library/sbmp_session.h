@@ -40,7 +40,7 @@ typedef struct {
 	SBMP_FrmInst frm;                /*!< Framing layer internal state */
 
 	// Handshake
-	SBMP_HandshakeStatus hsk_state;  /*!< Handshake progress */
+	SBMP_HandshakeStatus hsk_status;  /*!< Handshake progress */
 	uint16_t hsk_session;            /*!< Session number of the handshake request message */
 	uint16_t peer_buffer_size;       /*!< Peer's buffer size (obtained during handshake) */
 	SBMP_CksumType peer_pref_cksum;  /*!< Peer's preferred checksum type */
@@ -183,6 +183,9 @@ bool sbmp_ep_send_message(
  * @param ep : Endpoint struct
  */
 bool sbmp_ep_start_handshake(SBMP_Endpoint *ep);
+
+/** Abort current handshake & discard hsk session */
+void sbmp_ep_abort_handshake(SBMP_Endpoint *ep);
 
 /**
  * @brief Receive a byte from USART (is passed to the framing layer)
