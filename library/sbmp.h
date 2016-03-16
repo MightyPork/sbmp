@@ -8,6 +8,8 @@
  * #include in your application code.
  */
 
+#define SBMP_VER "1.3"
+
 #include "sbmp_config.h"
 
 // Common utils & the frame parser
