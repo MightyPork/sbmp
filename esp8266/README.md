@@ -16,15 +16,19 @@ If you find something, please let me know (submit an issue on GitHub).
 How to use it
 -------------
 
+The `library/esp_includes/` folder contains some custom headers needed, mostly
+taken from *libesphttpd* and the SDK. You may want to copy those to your project 
+and adjust as needed.
+
 Some example code on how to set up UART and SBMP are in the `example/` folder,
 though take it more as an inspiration rather than a working example.
 
-The `esp_includes/` folder contains some custom headers needed, mostly
-taken from of libesphttpd.
+- `serial.c` configues the UARTs (UART0 for SBMP, UART1 to print debug
+  messages with os_printf). It also handles the Rx interrupts.
 
-Rest of the example folder is more or less my own code and bits from the IoT SDK.
+- `datalink.c` configures SBMP.
 
-`serial.c` configues the UARTs (UART0 for SBMP, UART1 to print debug
-messages with os_printf). It also handles the Rx interrupts.
+If you get compile errors, and figure them out, please let me know so I can
+add a note here.
 
-`datalink.c` configures SBMP.
+
