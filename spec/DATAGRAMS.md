@@ -37,25 +37,6 @@ handshake will fail.
 need to implement it in your code. There are functions in the session layer
 to control the handshake.**
 
-### Ping message
-
-| Datagram type | Description
-| ------------- | -----------
-| 0x03          | Ping request/response
-
-The receiving party is obliged to reply with the same type and the same session
-number.
-
-This datagram has no data payload.
-
-This datagram type can be used to check that the other peer is working
-properly.
-
-This can for example be used as an addition to a watchdog - the sender can reset
-the receiver if ping fails (provided a hardware reset line is available).
-
-**The ping functionality is built into the session layer, similar to the 
-handshake.**
 
 ### Chunked Bulk Transfer
 

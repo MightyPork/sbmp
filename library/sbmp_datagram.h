@@ -23,8 +23,8 @@ typedef uint8_t SBMP_DgType;
 #define DG_HANDSHAKE_ACCEPT   0x01
 #define DG_HANDSHAKE_CONFLICT 0x02
 
-// Ping (for testing - hand-shake is better to assure the peer is present)
-#define DG_PING 0x03
+// DG type 0x03 currently unused
+//#define DG_ 0x03
 
 // Bulk data transfer
 #define DG_BULK_OFFER 0x04
