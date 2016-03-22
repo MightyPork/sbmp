@@ -43,9 +43,6 @@ to control the handshake.**
 *Chunked bulk transfer* is a way of sending large amount of data in a series of
 short data packets (size is limited by the rx buffers).
 
-This spec defines the datagram types and procedure, implementation is left to 
-the user.
-
 It's recommended to use the "session listener" feature of the reference library
 (if you use the library).
 
