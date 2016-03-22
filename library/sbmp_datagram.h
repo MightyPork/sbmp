@@ -11,7 +11,7 @@
  * and is not very useful on it's own.
  */
 
-#include <stdint.h>
+#include "esp8266.h"
 
 #include "sbmp_config.h"
 #include "sbmp_frame.h"

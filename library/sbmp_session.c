@@ -357,18 +357,18 @@ static void FLASH_FN parse_peer_hsk_buf(SBMP_Endpoint *ep, const uint8_t* buf)
  */
 bool FLASH_FN sbmp_ep_start_handshake(SBMP_Endpoint *ep)
 {
-	if (ep->hsk_state == SBMP_HSK_AWAIT_REPLY) {
+	if (ep->hsk_status == SBMP_HSK_AWAIT_REPLY) {
 		// busy now
 		sbmp_error("Can't start HSK, in progress already.");
 		return false;
 	}
 
-	ep->hsk_state = 0;
+	ep->hsk_status = 0;
 
 	uint8_t buf[HSK_PAYLOAD_LEN];
 	populate_hsk_buf(ep, buf);
 
-	ep->hsk_state = SBMP_HSK_AWAIT_REPLY;
+	ep->hsk_status = SBMP_HSK_AWAIT_REPLY;
 
 	bool suc = sbmp_ep_send_message(ep, DG_HANDSHAKE_START, buf, 3, &ep->hsk_session, NULL);
 
@@ -417,7 +417,7 @@ static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 			// peer requests origin
 			sbmp_info("Rx HSK request");
 
-			if (ep->hsk_state == SBMP_HSK_AWAIT_REPLY) {
+			if (ep->hsk_status == SBMP_HSK_AWAIT_REPLY) {
 				// conflict occured - we're already waiting for a reply.
 				sbmp_ep_send_response(ep, DG_HANDSHAKE_CONFLICT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
 				ep->hsk_status = SBMP_HSK_CONFLICT;
@@ -433,7 +433,7 @@ static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 					parse_peer_hsk_buf(ep, dg->payload);
 				}
 
-				ep->hsk_state = SBMP_HSK_SUCCESS;
+				ep->hsk_status = SBMP_HSK_SUCCESS;
 
 				// Send Accept response
 				sbmp_ep_send_response(ep, DG_HANDSHAKE_ACCEPT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
@@ -442,7 +442,7 @@ static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 			// peer accepted our request
 			sbmp_info("Rx HSK accept");
 
-			if (ep->hsk_state != SBMP_HSK_AWAIT_REPLY || ep->hsk_session != dg->session) {
+			if (ep->hsk_status != SBMP_HSK_AWAIT_REPLY || ep->hsk_session != dg->session) {
 				// but we didn't send any request
 				sbmp_error("Rx unexpected HSK accept, ignoring.");
 
@@ -454,13 +454,13 @@ static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 					parse_peer_hsk_buf(ep, dg->payload);
 				}
 
-				ep->hsk_state = SBMP_HSK_SUCCESS;
+				ep->hsk_status = SBMP_HSK_SUCCESS;
 			}
 		} else if (hsk_conflict) {
 			// peer rejected our request due to conflict
 			sbmp_info("Rx HSK conflict");
 
-			if (ep->hsk_state != SBMP_HSK_AWAIT_REPLY || ep->hsk_session != dg->session) {
+			if (ep->hsk_status != SBMP_HSK_AWAIT_REPLY || ep->hsk_session != dg->session) {
 				// but we didn't send any request
 				sbmp_error("Rx unexpected HSK conflict, ignoring.");
 			} else {
@@ -469,7 +469,7 @@ static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 				// reset everything
 				sbmp_frm_reset(&ep->frm);
 
-				ep->hsk_state = SBMP_HSK_CONFLICT;
+				ep->hsk_status = SBMP_HSK_CONFLICT;
 			}
 		}
 

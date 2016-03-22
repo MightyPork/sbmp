@@ -5,8 +5,7 @@
  * Checksum functions for the SBMP framing layer.
  */
 
-#include <stdint.h>
-#include <stdbool.h>
+#include "esp8266.h"
 
 #include "sbmp_config.h"
 

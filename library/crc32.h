@@ -2,6 +2,7 @@
 #define CRC32_H
 
 #include "sbmp_config.h"
+#include "esp8266.h"
 #if SBMP_HAS_CRC32
 
 /**
@@ -12,8 +13,6 @@
  * doing it in software.
  */
 
-#include <stdint.h>
-#include <stdbool.h>
 #include <stddef.h>
 
 /**

@@ -1,7 +1,5 @@
 #include "esp8266.h"
 
-#include <stdbool.h>
-
 #include "sbmp_config.h"
 #include "sbmp_checksum.h"
 

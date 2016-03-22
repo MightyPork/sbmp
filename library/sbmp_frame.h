@@ -10,8 +10,7 @@
  * You will still get checksums and other benefits.
  */
 
-#include <stdint.h>
-#include <stdbool.h>
+#include "esp8266.h"
 #include <stddef.h>
 
 #include "sbmp_config.h"

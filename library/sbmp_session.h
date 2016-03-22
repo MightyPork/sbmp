@@ -14,9 +14,7 @@
  * You can still interact with the framing layer directly, but it shouldn't be needed.
  */
 
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdlib.h>
+#include "esp8266.h"
 
 #include "sbmp_config.h"
 #include "sbmp_datagram.h"
@@ -65,7 +63,7 @@ struct SBMP_Endpoint_struct {
 	SBMP_FrmInst frm;                /*!< Framing layer internal state */
 
 	// Handshake
-	SBMP_HandshakeStatus hsk_state;  /*!< Handshake progress */
+	SBMP_HandshakeStatus hsk_status;  /*!< Handshake progress */
 	uint16_t hsk_session;            /*!< Session number of the handshake request message */
 	uint16_t peer_buffer_size;       /*!< Peer's buffer size (obtained during handshake) */
 	SBMP_CksumType peer_pref_cksum;  /*!< Peer's preferred checksum type */
