@@ -165,6 +165,42 @@ bool sbmp_ep_send_u16(SBMP_Endpoint *ep, uint16_t word);
 /** Send one 32-bit word in the current message */
 bool sbmp_ep_send_u32(SBMP_Endpoint *ep, uint32_t word);
 
+
+/** Send one byte in the current message */
+static inline
+bool sbmp_ep_send_i8(SBMP_Endpoint *ep, int8_t byte)
+{
+	return sbmp_ep_send_u8(ep, *(uint8_t*)&byte);
+}
+
+/** send char (just alias) */
+static inline
+bool sbmp_ep_send_char(SBMP_Endpoint *ep, int8_t byte)
+{
+	return sbmp_ep_send_i8(ep, byte);
+}
+
+/** Send one 16-bit word in the current message */
+static inline
+bool sbmp_ep_send_i16(SBMP_Endpoint *ep, int16_t word)
+{
+	return sbmp_ep_send_u16(ep, *(uint16_t*)&word);
+}
+
+/** Send one 32-bit word in the current message */
+static inline
+bool sbmp_ep_send_i32(SBMP_Endpoint *ep, int32_t word)
+{
+	return sbmp_ep_send_u32(ep, *(uint32_t*)&word);
+}
+
+/** Send one float word in the current message */
+static inline
+bool sbmp_ep_send_float(SBMP_Endpoint *ep, float word)
+{
+	return sbmp_ep_send_u32(ep, *(uint32_t*)&word);
+}
+
 /**
  * @brief Send a data buffer (or a part) in the current message
  *

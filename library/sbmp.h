@@ -23,4 +23,6 @@
 #include "sbmp_session.h"
 #include "sbmp_bulk.h"
 
+#include "payload_parser.h"
+
 #endif /* SBMP_H */

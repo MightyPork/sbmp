@@ -16,7 +16,8 @@ SOURCES += \
     main_frm_dg.c \
     sbmp/sbmp_logging.c \
     sbmp/sbmp_checksum.c \
-    sbmp/sbmp_bulk.c
+    sbmp/sbmp_bulk.c \
+    sbmp/payload_parser.c
 
 HEADERS += \
     crc32.h \
@@ -28,7 +29,8 @@ HEADERS += \
     sbmp/sbmp_logging.h \
     sbmp/sbmp_checksum.h \
     sbmp/sbmp_config.h \
-    sbmp/sbmp_bulk.h
+    sbmp/sbmp_bulk.h \
+    sbmp/payload_parser.h
 
 DISTFILES += \
     Makefile \
