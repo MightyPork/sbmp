@@ -22,18 +22,43 @@
 #include "sbmp_datagram.h"
 #include "sbmp_frame.h"
 
+/**
+ * Handshake status
+ */
 typedef enum {
-	SBMP_HSK_NOT_STARTED = 0,     /*!< Initial state, unconfigured */
-	SBMP_HSK_SUCCESS = 1,         /*!< Handshake done, origin assigned. */
+	SBMP_HSK_IDLE = 0,            /*!< Initial state, origin unconfigured. Idle. */
+	SBMP_HSK_SUCCESS = 1,         /*!< Handshake done, origin assigned. Idle. */
 	SBMP_HSK_AWAIT_REPLY = 2,     /*!< Request sent, awaiting a reply */
 	SBMP_HSK_CONFLICT = 3,        /*!< Conflict occured during HSK */
 } SBMP_HandshakeStatus;
 
 
-/** SBMP Endpoint (session)  structure */
+/** Forward declaration of the endpoint struct */
+typedef struct SBMP_Endpoint_struct SBMP_Endpoint;
+
+/**
+ * Session listener function.
+ */
+typedef void (*SBMP_SessionListener)(SBMP_Endpoint *ep, SBMP_Datagram *dg);
+
+/**
+ * Session listener slot.
+ *
+ * Used internally when session listener is installed,
+ * declared in the header to allow static allocation.
+ */
 typedef struct {
+	uint16_t session;
+	SBMP_SessionListener callback; // null = unused
+} SBMP_SessionListenerSlot;
+
+/** SBMP Endpoint (session) structure */
+struct SBMP_Endpoint_struct {
 	bool origin;                     /*!< Local origin bit */
 	uint16_t next_session;           /*!< Next session number */
+
+	SBMP_SessionListenerSlot *listeners; /*!< Array of session listener slots */
+	uint16_t listener_count;             /*!< length of the session listener slot array */
 
 	void (*rx_handler)(SBMP_Datagram *dg);  /*!< Datagram receive handler */
 
@@ -54,7 +79,8 @@ typedef struct {
 										  not only until the callback ends. Disabling the EP in the Rx
 										  callback lets you preserve the Dg for a longer period -
 										  i.e. put it in a global var, where a loop retrieves it. */
-} SBMP_Endpoint;
+};
+
 
 
 /**
@@ -77,6 +103,15 @@ SBMP_Endpoint *sbmp_ep_init(SBMP_Endpoint *ep,
 							uint16_t buffer_size,
 							void (*dg_rx_handler)(SBMP_Datagram *dg),
 							void (*tx_func)(uint8_t byte));
+
+/**
+ * @brief Configure session listener slots
+ * @param ep             : Endpoint pointer
+ * @param listener_slots : session listener slots (for multi-message sessions), NULL to malloc.
+ * @param slot_count     : number of slots in the array (or to malloc)
+ * @return success
+ */
+bool sbmp_ep_init_listeners(SBMP_Endpoint *ep, SBMP_SessionListenerSlot *listener_slots, uint16_t slot_count);
 
 /**
  * @brief Reset an endpoint and it's Framing Layer
@@ -119,16 +154,16 @@ bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length
  * @param sesn       : Var to store session number, NULL = don't store.
  * @return success
  */
-bool sbmp_ep_start_session(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t *sesn_ptr);
+bool sbmp_ep_start_message(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t *sesn_ptr);
 
-/**
- * @brief Send one byte in the current message
- *
- * @param ep    : Endpoint struct
- * @param byte  : byte to send
- * @return true on success
- */
-bool sbmp_ep_send_byte(SBMP_Endpoint *ep, uint8_t byte);
+/** Send one byte in the current message */
+bool sbmp_ep_send_u8(SBMP_Endpoint *ep, uint8_t byte);
+
+/** Send one 16-bit word in the current message */
+bool sbmp_ep_send_u16(SBMP_Endpoint *ep, uint16_t word);
+
+/** Send one 32-bit word in the current message */
+bool sbmp_ep_send_u32(SBMP_Endpoint *ep, uint32_t word);
 
 /**
  * @brief Send a data buffer (or a part) in the current message
@@ -136,9 +171,10 @@ bool sbmp_ep_send_byte(SBMP_Endpoint *ep, uint8_t byte);
  * @param ep     : Endpoint struct
  * @param buffer : buffer of bytes to send
  * @param length : buffer length (byte count)
+ * @param sent_bytes_ptr : Var to store NR of sent bytes. NULL = don't store.
  * @return actual sent length (until payload is full)
  */
-uint16_t sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t length);
+bool sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t length, uint16_t *sent_bytes_ptr);
 
 /**
  * @brief Send a message in a new session.
@@ -179,10 +215,26 @@ bool sbmp_ep_send_message(
 	uint16_t *sent_bytes);
 
 /**
+ * @brief Claim a session number (+ increment the counter)
+ *
+ * This can be used if a new session number is needed before starting the session.
+ *
+ * @param ep : Endpoint struct ptr
+ * @return number
+ */
+uint16_t sbmp_ep_new_session(SBMP_Endpoint *ep);
+
+/**
  * @brief Start a handshake (origin bit arbitration)
  * @param ep : Endpoint struct
  */
 bool sbmp_ep_start_handshake(SBMP_Endpoint *ep);
+
+/** Abort current handshake & discard hsk session */
+void sbmp_ep_abort_handshake(SBMP_Endpoint *ep);
+
+/** Get current handshake state */
+SBMP_HandshakeStatus sbmp_ep_handshake_status(SBMP_Endpoint *ep);
 
 /**
  * @brief Receive a byte from USART (is passed to the framing layer)
@@ -192,9 +244,6 @@ bool sbmp_ep_start_handshake(SBMP_Endpoint *ep);
  */
 SBMP_RxStatus sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte);
 
-/** Get current handshake state */
-SBMP_HandshakeStatus sbmp_ep_handshake_status(SBMP_Endpoint *ep);
-
 /** Enable or disable both Rx and TX in the FrmInst backing this Endpoint */
 void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable);
 
@@ -203,5 +252,18 @@ void sbmp_ep_enable_rx(SBMP_Endpoint *ep, bool enable_rx);
 
 /** Enable or disable TX in the FrmInst backing this Endpoint */
 void sbmp_ep_enable_tx(SBMP_Endpoint *ep, bool enable_tx);
+
+/**
+ * Add a session listener
+ * The listener will be used for all incoming messages with the given session nr.
+ *
+ * To unsubscribe, simply remove the listener (possible from within the callback)
+ *
+ * @return success (false if no free slot was found)
+ */
+bool sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_SessionListener callback);
+
+/** Remove a session listener. */
+void sbmp_ep_remove_listener(SBMP_Endpoint *ep, uint16_t session);
 
 #endif /* SBMP_SESSION_H */

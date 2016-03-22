@@ -31,8 +31,13 @@ static void bob_tx(uint8_t byte);
 static SBMP_Endpoint *alice;
 static SBMP_Endpoint *bob;
 
+
+static void alice_40_listener(SBMP_Endpoint *ep, SBMP_Datagram *dg);
+
 int main(void)
 {
+	bool suc;
+
 	printf("\n");
 
 	// --- Set up SBMP ---
@@ -42,13 +47,17 @@ int main(void)
 	// You can pass your own static struct and a buffer array instead of the NULLs,
 	// if you don't want to use MALLOC.
 
-	alice = sbmp_ep_init(NULL, NULL, 30, alice_rx, alice_tx);
-	bob   = sbmp_ep_init(NULL, NULL, 60, bob_rx, bob_tx);
+	alice = sbmp_ep_init(NULL, NULL, 100, alice_rx, alice_tx);
+	bob   = sbmp_ep_init(NULL, NULL, 200, bob_rx, bob_tx);
+
+	// OPTIONAL - good for multi-message transfers.
+	sbmp_ep_init_listeners(alice, NULL, 6);
+	sbmp_ep_init_listeners(bob, NULL, 6);
+
 
 	// --- Prepare the endpoints ---
 
-	// You can set the initial session number (rand).
-	// This *could* help with debugging, and make handshake more reliable. Maybe.
+	// You can set the initial session number (rand). OPTIONAL
 //	sbmp_ep_seed_session(alice, 1000);
 //	sbmp_ep_seed_session(bob, 2000);
 
@@ -61,10 +70,11 @@ int main(void)
 	sbmp_ep_enable(alice, true);
 	sbmp_ep_enable(bob, true);
 
+
 	// --- Start handshake ---
 
 	// Alice starts a handshake
-	bool suc = sbmp_ep_start_handshake(alice);
+	suc = sbmp_ep_start_handshake(alice);
 	if (!suc) {
 		printf("Failed to start handshake.");
 		return 1;
@@ -79,6 +89,7 @@ int main(void)
 
 	printf("Alice's origin = %d\n", alice->origin);
 	printf("Bob's origin   = %d\n", bob->origin);
+
 
 	// --- Try sending some stuff ---
 
@@ -95,20 +106,131 @@ int main(void)
 	msg = "HELLO, ALICE!";
 	sbmp_ep_send_message(bob, 100, (uint8_t*)msg, (uint16_t)strlen(msg), NULL, NULL); // NULL - we con't care what session nr it is
 
+
+	// --- Try the multi-message transfer functionality ---
+
+	// this will similate a bulk data transfer, with fictional datagram types
+
+	// NOTE:
+
+	// This can't work without actual hardware with some transfer delays (or some async queue)
+
+	// If used with synchronous callbacks like in this example,
+	// alice receives a reply even before she had time to register the listener
+
+	// Work-around would be to first make the session number,
+	// and send the initial message using the "reply" function.
+
+	msg = "Hi Bob, wanna start a session?";
+
+	if (false) {
+
+		// this is the normal way to do it - would not work here. (see above)
+		sbmp_ep_send_message(alice, 40, (uint8_t*)msg, (uint16_t)strlen(msg), &sesn, NULL);
+		sbmp_ep_add_listener(alice, sesn, alice_40_listener);
+
+	} else {
+		// this is how we do it here to avoid the above mentioned limitation
+
+		// NOTE: it still won't work right here, it's here for illustration only
+
+		// first get the session number, and register the listener
+		sesn = sbmp_ep_new_session(alice);
+		sbmp_ep_add_listener(alice, sesn, alice_40_listener);
+
+		// use the "response" function instead of "message" - they are the same apart from the session number handling
+		// "message" creates a new session nr and puts it in the provided pointer, "response" accepts it as an argument.
+		suc = sbmp_ep_send_response(alice, 40, (uint8_t*)msg, (uint16_t)strlen(msg), sesn, NULL);
+		// the session hasn't been started, remove the listener which is now useless
+		if (!suc) sbmp_ep_remove_listener(alice, sesn);
+	}
+
+	// rest is done in the listeners
+	// we have the session nr in sesn
+
 	printf("Done.\n");
 }
+
+
+
+// we will use:
+// type "40" to start the multi-message transfer,
+// type "41" to acknowledge
+// type "42" to request data
+// type "43" to reply data
+// type "44" to terminate the session
+
+static void alice_40_listener(SBMP_Endpoint *ep, SBMP_Datagram *dg)
+{
+	printf("ALICE received a message in session %d - type %d\n", dg->session, dg->type);
+
+	printf("\x1b[32m[ALICE] Received: ");
+	for (int  i = 0; i < dg->length; i++) {
+		printf("%c", dg->payload[i]);
+	}
+	printf("\x1b[0m\n");
+
+	// if alice received 41, means bob agrees to the transfer
+
+	if (dg->type == 41) {
+		// bob agrees to the bulk transfer
+
+		// Alice can now send 42 to request data
+
+		// THIS WONT WORK HERE BECAUSE WE DON'T HAVE DELAYS (in this example)
+		// bob is still in the callback - can't handle new response :(
+	}
+
+	// if received 43, data is received from bob
+	if (dg->type == 43) {
+		// bob sent us some data...
+
+		// process & can also query for more
+	}
+
+	if (dg->type == 44) {
+		// bob wants to close the connection
+		// (something happened and the data is perhaps no longer available)
+
+		// this will normally not be needed
+		sbmp_ep_remove_listener(ep, dg->session);
+	}
+}
+
+
+static void bob_40_listener(SBMP_Endpoint *ep, SBMP_Datagram *dg)
+{
+	printf("BOB received a message in session %d - type %d\n", dg->session, dg->type);
+
+	printf("\x1b[36m[BOB] Received: ");
+	for (int  i = 0; i < dg->length; i++) {
+		printf("%c", dg->payload[i]);
+	}
+	printf("\x1b[0m\n");
+
+	// 42 - alice requests data -> reply with 43 and data
+
+	if (dg->type == 44) {
+		// alice wants to close the connection
+		sbmp_ep_remove_listener(ep, dg->session);
+
+		// do needed cleanup if any
+	}
+}
+
+
 
 // --- Endpoint implementations ---
 
 static void alice_rx(SBMP_Datagram *dg)
 {
-	printf("\e[32m[ALICE] received a datagram: sn %d, type %d, len %d\e[0m\n", dg->session, dg->type, dg->length);
+	printf("\x1b[32m[ALICE] received a datagram: sn %d, type %d, len %d\x1b[0m\n", dg->session, dg->type, dg->length);
 
-	printf("\e[32m[ALICE] Received: ");
+	printf("\x1b[32m[ALICE] Received: ");
 	for (int  i = 0; i < dg->length; i++) {
 		printf("%c", dg->payload[i]);
 	}
-	printf("\e[0m\n");
+	printf("\x1b[0m\n");
 }
 
 static void alice_tx(uint8_t byte)
@@ -123,13 +245,21 @@ static void alice_tx(uint8_t byte)
 
 static void bob_rx(SBMP_Datagram *dg)
 {
-	printf("\e[36m[BOB] received a datagram: sn %d, type %d, len %d\e[0m\n", dg->session, dg->type, dg->length);
+	printf("\x1b[36m[BOB] received a datagram: sn %d, type %d, len %d\x1b[0m\n", dg->session, dg->type, dg->length);
 
-	printf("\e[36m[BOB] Received: ");
+	printf("\x1b[36m[BOB] Received: ");
 	for (int  i = 0; i < dg->length; i++) {
 		printf("%c", dg->payload[i]);
 	}
-	printf("\e[0m\n");
+	printf("\x1b[0m\n");
+
+	// part of the listener example:
+	if (dg->type == 40) {
+		// alice wants to start a session
+		sbmp_ep_add_listener(bob, dg->session, bob_40_listener);
+
+		// TODO send reply, like 41 - indicate that we acknowledge the transfer
+	}
 }
 
 static void bob_tx(uint8_t byte)

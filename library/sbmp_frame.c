@@ -19,17 +19,24 @@ SBMP_FrmInst FLASH_FN *sbmp_frm_init(
 	void (*rx_handler)(uint8_t *, uint16_t, void *),
 	void (*tx_func)(uint8_t))
 {
+	bool frm_mallocd = false;
 
 #if SBMP_MALLOC
 
 	if (frm == NULL) {
 		// caller wants us to allocate it
 		frm = malloc(sizeof(SBMP_FrmInst));
+		if (frm == NULL) return NULL; // malloc failed
+		frm_mallocd = true;
 	}
 
 	if (buffer == NULL) {
 		// caller wants us to allocate it
 		buffer = malloc(buffer_size);
+		if (buffer == NULL) { // malloc failed
+			if (frm_mallocd) free(frm);
+			return NULL;
+		}
 	}
 
 #else
@@ -402,6 +409,8 @@ bool FLASH_FN sbmp_frm_send_byte(SBMP_FrmInst *frm, uint8_t byte)
 	cksum_update(frm->tx_cksum_type, &frm->tx_cksum_scratch, byte);
 	frm->tx_remain--;
 
+	//  this was the last bute of the frame payload
+	// send checksum and go idle.
 	if (frm->tx_remain == 0) {
 		end_frame(frm); // checksum & go idle
 	}

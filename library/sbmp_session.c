@@ -16,6 +16,8 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg);
 // Datagram header length - 2 B sesn, 1 B type
 #define DATAGRA_HEADER_LEN 3
 
+#define SESSION2ORIGIN(session) (((session) & 0x8000) >> 15)
+
 
 /** Rx handler that is assigned to the framing layer */
 static void FLASH_FN ep_rx_handler(uint8_t *buf, uint16_t len, void *token)
@@ -37,26 +39,45 @@ static void FLASH_FN ep_rx_handler(uint8_t *buf, uint16_t len, void *token)
  * @param ep          : Endpoint var pointer, or NULL to allocate one.
  * @param buffer      : Rx buffer. NULL to allocate one.
  * @param buffer_size : Rx buffer length
+ * @param listener_slots      : session listener slots (for multi-message sessions), NULL to malloc.
+ * @param listener_slot_count : number of slots in the array (or to allocate)
  * @return the endpoint struct pointer (allocated if ep was NULL)
  */
 SBMP_Endpoint FLASH_FN *sbmp_ep_init(
-		SBMP_Endpoint *ep,
-		uint8_t *buffer,
-		uint16_t buffer_size,
-		void (*dg_rx_handler)(SBMP_Datagram *dg),
-		void (*tx_func)(uint8_t byte))
+	// endpoint struct, NULL to malloc.
+	SBMP_Endpoint *ep,
+	// payload buffer, NULL to malloc.
+	uint8_t *buffer, uint16_t buffer_size,
+	// receive handler
+	void (*dg_rx_handler)(SBMP_Datagram *dg),
+	// byte transmit function for the framing layer
+	void (*tx_func)(uint8_t byte))
 {
+	// indicate that the obj was malloc'd here, and should be freed on error
+	bool ep_mallocd = false;
+
 	if (ep == NULL) {
 		// request to allocate it
-		#if SBMP_MALLOC
-			ep = malloc(sizeof(SBMP_Endpoint));
-		#else
-			return NULL; // fail
-		#endif
+#if SBMP_MALLOC
+		ep = malloc(sizeof(SBMP_Endpoint));
+		if (!ep) return NULL; // malloc failed
+		ep_mallocd = true;
+#else
+		return NULL; // fail
+#endif
 	}
 
+	// set the listener fields
+	ep->listeners = NULL;
+	ep->listener_count = 0;
+
 	// set up the framing layer
-	sbmp_frm_init(&ep->frm, buffer, buffer_size, ep_rx_handler, tx_func);
+	SBMP_FrmInst *alloc_frm = sbmp_frm_init(&ep->frm, buffer, buffer_size, ep_rx_handler, tx_func);
+	if (!alloc_frm) {
+		// the buffer or frm allocation failed
+		if (ep_mallocd) free(ep);
+		return NULL;
+	}
 
 	// set token, so callback knows what EP it's for.
 	sbmp_frm_set_user_token(&ep->frm, (void *) ep);
@@ -78,6 +99,30 @@ SBMP_Endpoint FLASH_FN *sbmp_ep_init(
 	return ep;
 }
 
+
+bool sbmp_ep_init_listeners(SBMP_Endpoint *ep, SBMP_SessionListenerSlot *listener_slots, uint16_t slot_count)
+{
+	// NULL is allowed only if count is 0
+	if (listener_slots == NULL && slot_count > 0) {
+		// request to allocate it
+#if SBMP_MALLOC
+		// calloc -> make sure all listeners are NULL = unused
+		listener_slots = calloc(slot_count, sizeof(SBMP_SessionListenerSlot));
+		if (!listener_slots) { // malloc failed
+			return false;
+		}
+#else
+		return false;
+#endif
+	}
+
+	// set the listener fields
+	ep->listeners = listener_slots;
+	ep->listener_count = slot_count;
+
+	return true;
+}
+
 /**
  * @brief Reset an endpoint and it's Framing Layer
  *
@@ -92,7 +137,7 @@ void FLASH_FN sbmp_ep_reset(SBMP_Endpoint *ep)
 
 	// init the handshake status
 	ep->hsk_session = 0;
-	ep->hsk_state = SBMP_HSK_NOT_STARTED;
+	ep->hsk_status = SBMP_HSK_IDLE;
 
 	ep->peer_buffer_size = 0xFFFF; // max possible buffer
 
@@ -100,7 +145,7 @@ void FLASH_FN sbmp_ep_reset(SBMP_Endpoint *ep)
 }
 
 
-// --- Customizing settings ---
+// ---- Customizing settings ------------------------------------------------
 
 /** Set session number (good to randomize before first message) */
 void FLASH_FN sbmp_ep_seed_session(SBMP_Endpoint *ep, uint16_t sesn)
@@ -147,7 +192,7 @@ void FLASH_FN sbmp_ep_enable(SBMP_Endpoint *ep, bool enable)
 // ---
 
 /** Get a new session number */
-static uint16_t FLASH_FN next_session(SBMP_Endpoint *ep)
+uint16_t FLASH_FN sbmp_ep_new_session(SBMP_Endpoint *ep)
 {
 	uint16_t sesn = ep->next_session;
 
@@ -160,7 +205,7 @@ static uint16_t FLASH_FN next_session(SBMP_Endpoint *ep)
 }
 
 
-// --- Header/body send funcs ---
+// ---- Header/body send funcs -------------------------------------------------
 
 /** Start a message as a reply */
 bool FLASH_FN sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t sesn)
@@ -176,9 +221,9 @@ bool FLASH_FN sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16
 }
 
 /** Start a message in a new session */
-bool FLASH_FN sbmp_ep_start_session(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t *sesn_ptr)
+bool FLASH_FN sbmp_ep_start_message(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t *sesn_ptr)
 {
-	uint16_t sn = next_session(ep);
+	uint16_t sn = sbmp_ep_new_session(ep);
 
 	bool suc = sbmp_ep_start_response(ep, type, length, sn);
 	if (suc) {
@@ -189,15 +234,36 @@ bool FLASH_FN sbmp_ep_start_session(SBMP_Endpoint *ep, SBMP_DgType type, uint16_
 }
 
 /** Send one byte in the current message */
-bool FLASH_FN sbmp_ep_send_byte(SBMP_Endpoint *ep, uint8_t byte)
+bool FLASH_FN sbmp_ep_send_u8(SBMP_Endpoint *ep, uint8_t byte)
 {
 	return sbmp_frm_send_byte(&ep->frm, byte);
 }
 
-/** Send a data buffer (or a part) in the current message */
-uint16_t FLASH_FN sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t length)
+/** Send one word in the current message */
+bool sbmp_ep_send_u16(SBMP_Endpoint *ep, uint16_t word)
 {
-	return sbmp_frm_send_buffer(&ep->frm, buffer, length);
+	return sbmp_frm_send_byte(&ep->frm, word & 0xFF)
+			&& sbmp_frm_send_byte(&ep->frm, (word >> 8) & 0xFF);
+}
+
+/** Send one word in the current message */
+bool sbmp_ep_send_u32(SBMP_Endpoint *ep, uint32_t word)
+{
+	return sbmp_frm_send_byte(&ep->frm, word & 0xFF)
+			&& sbmp_frm_send_byte(&ep->frm, (word >> 8) & 0xFF)
+			&& sbmp_frm_send_byte(&ep->frm, (word >> 16) & 0xFF)
+			&& sbmp_frm_send_byte(&ep->frm, (word >> 24) & 0xFF);
+}
+
+/** Send a data buffer (or a part) in the current message */
+bool FLASH_FN sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t length, uint16_t *sent_bytes_ptr)
+{
+	if (length == 0) return true;
+
+	uint16_t sent = sbmp_frm_send_buffer(&ep->frm, buffer, length);
+
+	if (sent_bytes_ptr != NULL) *sent_bytes_ptr = sent;
+	return (sent == length);
 }
 
 /** Rx, pass to framing layer */
@@ -207,41 +273,34 @@ SBMP_RxStatus FLASH_FN sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte)
 }
 
 
-// --- All-in-one send funcs ---
+// ---- All-in-one send funcs -----------------------------------------------
 
 /** Send a message in a session. */
 bool FLASH_FN sbmp_ep_send_response(
-		SBMP_Endpoint *ep,
-		SBMP_DgType type,
-		const uint8_t *buffer,
-		uint16_t length,
-		uint16_t sesn,
-		uint16_t *sent_bytes_ptr)
+	SBMP_Endpoint *ep,
+	SBMP_DgType type,
+	const uint8_t *buffer,
+	uint16_t length,
+	uint16_t sesn,
+	uint16_t *sent_bytes_ptr)
 {
-	bool suc = sbmp_ep_start_response(ep, type, length, sesn);
-
-	if (suc) {
-		uint16_t sent = sbmp_ep_send_buffer(ep, buffer, length);
-
-		if (sent_bytes_ptr != NULL) *sent_bytes_ptr = sent;
-	}
-
-	return suc;
+	return sbmp_ep_start_response(ep, type, length, sesn)
+			&& sbmp_ep_send_buffer(ep, buffer, length, sent_bytes_ptr);
 }
 
 /** Send message in a new session */
 bool FLASH_FN sbmp_ep_send_message(
-		SBMP_Endpoint *ep,
-		SBMP_DgType type,
-		const uint8_t *buffer,
-		uint16_t length,
-		uint16_t *sesn_ptr,
-		uint16_t *sent_bytes_ptr)
+	SBMP_Endpoint *ep,
+	SBMP_DgType type,
+	const uint8_t *buffer,
+	uint16_t length,
+	uint16_t *sesn_ptr,
+	uint16_t *sent_bytes_ptr)
 {
 	// This juggling with session nr is because it wouldn't work
 	// without actual hardware delay otherwise.
 
-	uint16_t sn = next_session(ep);;
+	uint16_t sn = sbmp_ep_new_session(ep);
 
 	uint16_t old_sesn = 0;
 	if (sesn_ptr != NULL) {
@@ -252,16 +311,15 @@ bool FLASH_FN sbmp_ep_send_message(
 	bool suc = sbmp_ep_send_response(ep, type, buffer, length, sn, sent_bytes_ptr);
 
 	if (!suc) {
-		if (sesn_ptr != NULL) {
-			*sesn_ptr = old_sesn; // restore
-		}
+		if (sesn_ptr != NULL) *sesn_ptr = old_sesn; // restore
 	}
 
 	return suc;
 }
 
 
-// --- Handshake ---
+// ---- Handshake ------------------------------------------------------
+
 /**
  * Prepare a buffer to send to peer during handshake
  *
@@ -312,10 +370,10 @@ bool FLASH_FN sbmp_ep_start_handshake(SBMP_Endpoint *ep)
 
 	ep->hsk_state = SBMP_HSK_AWAIT_REPLY;
 
-	bool suc = sbmp_ep_send_message(ep, SBMP_DG_HSK_START, buf, 3, &ep->hsk_session, NULL);
+	bool suc = sbmp_ep_send_message(ep, DG_HANDSHAKE_START, buf, 3, &ep->hsk_session, NULL);
 
 	if (!suc) {
-		ep->hsk_state = SBMP_HSK_NOT_STARTED;
+		ep->hsk_status = SBMP_HSK_IDLE;
 	}
 
 	return suc;
@@ -324,7 +382,14 @@ bool FLASH_FN sbmp_ep_start_handshake(SBMP_Endpoint *ep)
 /** Get hsk state */
 SBMP_HandshakeStatus FLASH_FN sbmp_ep_handshake_status(SBMP_Endpoint *ep)
 {
-	return ep->hsk_state;
+	return ep->hsk_status;
+}
+
+/** Abort current handshake & discard hsk session */
+void sbmp_ep_abort_handshake(SBMP_Endpoint *ep)
+{
+	ep->hsk_session = 0;
+	ep->hsk_status = SBMP_HSK_IDLE;
 }
 
 /**
@@ -337,9 +402,9 @@ SBMP_HandshakeStatus FLASH_FN sbmp_ep_handshake_status(SBMP_Endpoint *ep)
  */
 static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 {
-	bool hsk_start = (dg->type == SBMP_DG_HSK_START);
-	bool hsk_accept = (dg->type == SBMP_DG_HSK_ACCEPT);
-	bool hsk_conflict = (dg->type == SBMP_DG_HSK_CONFLICT);
+	bool hsk_start = (dg->type == DG_HANDSHAKE_START);
+	bool hsk_accept = (dg->type == DG_HANDSHAKE_ACCEPT);
+	bool hsk_conflict = (dg->type == DG_HANDSHAKE_CONFLICT);
 
 	if (hsk_start || hsk_accept || hsk_conflict) {
 		// prepare payload to send in response
@@ -354,13 +419,13 @@ static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 
 			if (ep->hsk_state == SBMP_HSK_AWAIT_REPLY) {
 				// conflict occured - we're already waiting for a reply.
-				sbmp_ep_send_response(ep, SBMP_DG_HSK_CONFLICT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
-				ep->hsk_state = SBMP_HSK_CONFLICT;
+				sbmp_ep_send_response(ep, DG_HANDSHAKE_CONFLICT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
+				ep->hsk_status = SBMP_HSK_CONFLICT;
 
 				sbmp_error("HSK conflict");
 			} else {
 				// we're idle, accept the request.
-				bool peer_origin = (dg->session & 0x8000) >> 15;
+				bool peer_origin = SESSION2ORIGIN(dg->session);
 				sbmp_ep_set_origin(ep, !peer_origin);
 
 				// read peer's info
@@ -371,7 +436,7 @@ static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 				ep->hsk_state = SBMP_HSK_SUCCESS;
 
 				// Send Accept response
-				sbmp_ep_send_response(ep, SBMP_DG_HSK_ACCEPT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
+				sbmp_ep_send_response(ep, DG_HANDSHAKE_ACCEPT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
 			}
 		} else if (hsk_accept) {
 			// peer accepted our request
@@ -409,8 +474,43 @@ static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 		}
 
 	} else {
-		// Not a HSK message
+		// try listeners first...
+		for (int i = 0; i < ep->listener_count; i++) {
+			SBMP_SessionListenerSlot *slot = &ep->listeners[i];
+			if (slot->callback == NULL) continue; // skip unused
+			if (slot->session == dg->session) {
+				slot->callback(ep, dg); // call the listener
+				return;
+			}
+		}
+
+		// if no listener consumed it, call the default handler
 		ep->rx_handler(dg);
 	}
 }
 
+// ---- Session listeners --------------------------------------------------------------
+
+bool sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_SessionListener callback)
+{
+	for (int i = 0; i < ep->listener_count; i++) {
+		SBMP_SessionListenerSlot *slot = &ep->listeners[i];
+		if (slot->callback != NULL) continue; // skip used slot
+		slot->session = session;
+		slot->callback = callback;
+		return true;
+	}
+	return false;
+}
+
+void sbmp_ep_remove_listener(SBMP_Endpoint *ep, uint16_t session)
+{
+	for (int i = 0; i < ep->listener_count; i++) {
+		SBMP_SessionListenerSlot *slot = &ep->listeners[i];
+		if (slot->callback == NULL) continue; // skip unused
+		if (slot->session == session) {
+			slot->callback = NULL; // mark unused
+			return;
+		}
+	}
+}
