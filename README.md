@@ -44,6 +44,10 @@ The current specification (draft) is in the [spec](spec/) folder.
 
 A reference implementation of SBMP is in the [library](library/) folder.
 
+**NOTE** The ESP8266 variant is on the `esp8266` branch, which allows for easy updating from this master version.
+Switch to that branch to get the code. The example and additional information for that branch is in the `esp_*` folders,
+and the `README_ESP.md` file in the library folder.
+
 The library works on AVR (ATmega328p) and should also work on STM32
 or any other microcontroller. Naturally it works also on desktop, 
 if you build it with GCC.
