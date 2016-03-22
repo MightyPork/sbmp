@@ -36,6 +36,8 @@ static void alice_40_listener(SBMP_Endpoint *ep, SBMP_Datagram *dg);
 
 int main(void)
 {
+	bool suc;
+
 	printf("\n");
 
 	// --- Set up SBMP ---
@@ -72,7 +74,7 @@ int main(void)
 	// --- Start handshake ---
 
 	// Alice starts a handshake
-	bool suc = sbmp_ep_start_handshake(alice);
+	suc = sbmp_ep_start_handshake(alice);
 	if (!suc) {
 		printf("Failed to start handshake.");
 		return 1;
@@ -119,16 +121,32 @@ int main(void)
 	// Work-around would be to first make the session number,
 	// and send the initial message using the "reply" function.
 
-	if(false){
+	msg = "Hi Bob, wanna start a session?";
 
-		msg = "Hi Bob, wanna start a session?";
+	if (false) {
+
+		// this is the normal way to do it - would not work here. (see above)
 		sbmp_ep_send_message(alice, 40, (uint8_t*)msg, (uint16_t)strlen(msg), &sesn, NULL);
 		sbmp_ep_add_listener(alice, sesn, alice_40_listener);
 
-		// rest is done in the listeners
-		// we have the session nr in sesn
+	} else {
+		// this is how we do it here to avoid the above mentioned limitation
 
+		// NOTE: it still won't work right here, it's here for illustration only
+
+		// first get the session number, and register the listener
+		sesn = sbmp_ep_next_session_number(alice);
+		sbmp_ep_add_listener(alice, sesn, alice_40_listener);
+
+		// use the "response" function instead of "message" - they are the same apart from the session number handling
+		// "message" creates a new session nr and puts it in the provided pointer, "response" accepts it as an argument.
+		suc = sbmp_ep_send_response(alice, 40, (uint8_t*)msg, (uint16_t)strlen(msg), sesn, NULL);
+		// the session hasn't been started, remove the listener which is now useless
+		if (!suc) sbmp_ep_remove_listener(alice, sesn);
 	}
+
+	// rest is done in the listeners
+	// we have the session nr in sesn
 
 	printf("Done.\n");
 }
@@ -152,14 +170,29 @@ static void alice_40_listener(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 	}
 	printf("\x1b[0m\n");
 
-	// TODO if alice received 41, means bob agrees to the transfer
+	// if alice received 41, means bob agrees to the transfer
 
-	// can now send 42 to request data
+	if (dg->type == 41) {
+		// bob agrees to the bulk transfer
 
-	// if received 43, data is sent from bob
+		// Alice can now send 42 to request data
+
+		// THIS WONT WORK HERE BECAUSE WE DON'T HAVE DELAYS (in this example)
+		// bob is still in the callback - can't handle new response :(
+	}
+
+	// if received 43, data is received from bob
+	if (dg->type == 43) {
+		// bob sent us some data...
+
+		// process & can also query for more
+	}
 
 	if (dg->type == 44) {
 		// bob wants to close the connection
+		// (something happened and the data is perhaps no longer available)
+
+		// this will normally not be needed
 		sbmp_ep_remove_listener(ep, dg->session);
 	}
 }

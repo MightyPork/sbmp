@@ -153,7 +153,7 @@ bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length
  * @param sesn       : Var to store session number, NULL = don't store.
  * @return success
  */
-bool sbmp_ep_start_session(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t *sesn_ptr);
+bool sbmp_ep_start_message(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t *sesn_ptr);
 
 /**
  * @brief Send one byte in the current message
@@ -211,6 +211,16 @@ bool sbmp_ep_send_message(
 	uint16_t length,
 	uint16_t *sesn,
 	uint16_t *sent_bytes);
+
+/**
+ * @brief Claim a session number (+ increment the counter)
+ *
+ * This can be used if a new session number is needed before starting the session.
+ *
+ * @param ep : Endpoint struct ptr
+ * @return number
+ */
+uint16_t sbmp_ep_next_session_number(SBMP_Endpoint *ep);
 
 /**
  * @brief Start a handshake (origin bit arbitration)

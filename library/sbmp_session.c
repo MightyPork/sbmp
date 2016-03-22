@@ -190,7 +190,7 @@ void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable)
 // ---
 
 /** Get a new session number */
-static uint16_t next_session(SBMP_Endpoint *ep)
+uint16_t sbmp_ep_next_session_number(SBMP_Endpoint *ep)
 {
 	uint16_t sesn = ep->next_session;
 
@@ -219,9 +219,9 @@ bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length
 }
 
 /** Start a message in a new session */
-bool sbmp_ep_start_session(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t *sesn_ptr)
+bool sbmp_ep_start_message(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t *sesn_ptr)
 {
-	uint16_t sn = next_session(ep);
+	uint16_t sn = sbmp_ep_next_session_number(ep);
 
 	bool suc = sbmp_ep_start_response(ep, type, length, sn);
 	if (suc) {
@@ -284,7 +284,7 @@ bool sbmp_ep_send_message(
 	// This juggling with session nr is because it wouldn't work
 	// without actual hardware delay otherwise.
 
-	uint16_t sn = next_session(ep);
+	uint16_t sn = sbmp_ep_next_session_number(ep);
 
 	uint16_t old_sesn = 0;
 	if (sesn_ptr != NULL) {
