@@ -1,11 +1,10 @@
-#include <stdlib.h>
-#include <stdint.h>
+#include "esp8266.h"
 
 #include "sbmp_config.h"
 #include "sbmp_logging.h"
 #include "sbmp_datagram.h"
 
-SBMP_Datagram *sbmp_dg_parse(SBMP_Datagram *dg, const uint8_t *payload, uint16_t length)
+SBMP_Datagram FLASH_FN *sbmp_dg_parse(SBMP_Datagram *dg, const uint8_t *payload, uint16_t length)
 {
 	if (length < 3) {
 		sbmp_error("Can't parse datagram, payload too short.");
@@ -35,7 +34,7 @@ SBMP_Datagram *sbmp_dg_parse(SBMP_Datagram *dg, const uint8_t *payload, uint16_t
 
 
 /** Start a datagram transmission */
-bool sbmp_dg_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t session, SBMP_DgType type, uint16_t length)
+bool FLASH_FN sbmp_dg_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t session, SBMP_DgType type, uint16_t length)
 {
 	if (length > (0xFFFF - 3)) {
 		sbmp_error("Can't send a datagram, payload too long.");
@@ -58,7 +57,7 @@ bool sbmp_dg_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t sessio
 
 
 /** Send a whole datagram in one go */
-bool sbmp_dg_send(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, SBMP_Datagram *dg)
+bool FLASH_FN sbmp_dg_send(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, SBMP_Datagram *dg)
 {
 	if (! sbmp_dg_start(frm, cksum_type, dg->session, dg->type, dg->length)) {
 		sbmp_error("Failed to start datagram.");

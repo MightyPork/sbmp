@@ -1,7 +1,6 @@
-#include <stdio.h>
-#include <stdlib.h>
+#include "esp8266.h"
+
 #include <stdarg.h>
-#include <inttypes.h>
 
 #include "sbmp_config.h"
 #include "sbmp_logging.h"
@@ -13,7 +12,7 @@ static void call_frame_rx_callback(SBMP_FrmInst *frm);
 
 
 /** Allocate the state struct & init all fields */
-SBMP_FrmInst *sbmp_frm_init(
+SBMP_FrmInst FLASH_FN *sbmp_frm_init(
 	SBMP_FrmInst *frm,
 	uint8_t *buffer,
 	uint16_t buffer_size,
@@ -59,39 +58,39 @@ SBMP_FrmInst *sbmp_frm_init(
 }
 
 /** Reset the internal state */
-void sbmp_frm_reset(SBMP_FrmInst *frm)
+void FLASH_FN sbmp_frm_reset(SBMP_FrmInst *frm)
 {
 	sbmp_frm_reset_rx(frm);
 	sbmp_frm_reset_tx(frm);
 }
 
 /** Enable or disable Rx */
-void sbmp_frm_enable_rx(SBMP_FrmInst *frm, bool enable)
+void FLASH_FN sbmp_frm_enable_rx(SBMP_FrmInst *frm, bool enable)
 {
 	frm->rx_enabled = enable;
 }
 
 /** Enable or disable Tx */
-void sbmp_frm_enable_tx(SBMP_FrmInst *frm, bool enable)
+void FLASH_FN sbmp_frm_enable_tx(SBMP_FrmInst *frm, bool enable)
 {
 	frm->tx_enabled = enable;
 }
 
 /** Enable or disable both Rx and Tx */
-void sbmp_frm_enable(SBMP_FrmInst *frm, bool enable)
+void FLASH_FN sbmp_frm_enable(SBMP_FrmInst *frm, bool enable)
 {
 	sbmp_frm_enable_rx(frm, enable);
 	sbmp_frm_enable_tx(frm, enable);
 }
 
 /** Set user token */
-void sbmp_frm_set_user_token(SBMP_FrmInst *frm, void *token)
+void FLASH_FN sbmp_frm_set_user_token(SBMP_FrmInst *frm, void *token)
 {
 	frm->user_token = token;
 }
 
 /** Reset the receiver state  */
-void sbmp_frm_reset_rx(SBMP_FrmInst *frm)
+void FLASH_FN sbmp_frm_reset_rx(SBMP_FrmInst *frm)
 {
 	frm->rx_buffer_i = 0;
 	frm->rx_length = 0;
@@ -105,7 +104,7 @@ void sbmp_frm_reset_rx(SBMP_FrmInst *frm)
 }
 
 /** Reset the transmitter state */
-void sbmp_frm_reset_tx(SBMP_FrmInst *frm)
+void FLASH_FN sbmp_frm_reset_tx(SBMP_FrmInst *frm)
 {
 	frm->tx_status = FRM_STATE_IDLE;
 	frm->tx_remain = 0;
@@ -115,21 +114,21 @@ void sbmp_frm_reset_tx(SBMP_FrmInst *frm)
 }
 
 /** Update a header XOR */
-static inline
+static inline FLASH_FN
 void hdrxor_update(SBMP_FrmInst *frm, uint8_t rxbyte)
 {
 	frm->rx_hdr_xor ^= rxbyte;
 }
 
 /** Check header xor against received value */
-static inline
+static inline FLASH_FN
 bool hdrxor_verify(SBMP_FrmInst *frm, uint8_t rx_xor)
 {
 	return frm->rx_hdr_xor == rx_xor;
 }
 
 /** Append a byte to the rx buffer */
-static inline
+static inline FLASH_FN
 void append_rx_byte(SBMP_FrmInst *frm, uint8_t b)
 {
 	frm->rx_buffer[frm->rx_buffer_i++] = b;
@@ -137,7 +136,7 @@ void append_rx_byte(SBMP_FrmInst *frm, uint8_t b)
 
 /** Set n-th byte (0 = LSM) to a value */
 static inline
-void set_byte(uint32_t *acc, uint8_t pos, uint8_t byte)
+void FLASH_FN set_byte(uint32_t *acc, uint8_t pos, uint8_t byte)
 {
 	*acc |= (uint32_t)(byte << (pos * 8));
 }
@@ -146,7 +145,7 @@ void set_byte(uint32_t *acc, uint8_t pos, uint8_t byte)
  * Call the message handler with the payload.
  *
  */
-static void call_frame_rx_callback(SBMP_FrmInst *frm)
+static void FLASH_FN call_frame_rx_callback(SBMP_FrmInst *frm)
 {
 	if (frm->rx_handler == NULL) {
 		sbmp_error("frame_handler is null!");
@@ -166,7 +165,7 @@ static void call_frame_rx_callback(SBMP_FrmInst *frm)
  * @param rxbyte
  * @return status
  */
-SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *frm, uint8_t rxbyte)
+SBMP_RxStatus FLASH_FN sbmp_frm_receive(SBMP_FrmInst *frm, uint8_t rxbyte)
 {
 	if (! frm->rx_enabled) {
 		return SBMP_RX_DISABLED;
@@ -237,7 +236,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *frm, uint8_t rxbyte)
 
 			// Check if not too long
 			if (frm->rx_length > frm->rx_buffer_cap) {
-				sbmp_error("Rx packet too long - %"PRIu16"!", (uint16_t)frm->rx_length);
+				sbmp_error("Rx packet too long - %d!", (uint16_t)frm->rx_length);
 				// discard the rest + checksum
 				frm->rx_status = FRM_STATE_DISCARD;
 				frm->rx_length += chksum_length(frm->rx_cksum_type);
@@ -304,7 +303,7 @@ SBMP_RxStatus sbmp_frm_receive(SBMP_FrmInst *frm, uint8_t rxbyte)
 }
 
 /** Send a frame header */
-bool sbmp_frm_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t length)
+bool FLASH_FN sbmp_frm_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t length)
 {
 	if (! frm->tx_enabled) {
 		sbmp_error("Can't tx, not enabled.");
@@ -357,7 +356,7 @@ bool sbmp_frm_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t lengt
 }
 
 /** End frame and enter idle mode */
-static void end_frame(SBMP_FrmInst *frm)
+static void FLASH_FN end_frame(SBMP_FrmInst *frm)
 {
 	if (!frm->tx_enabled) {
 		sbmp_error("Can't tx, not enabled.");
@@ -388,7 +387,7 @@ static void end_frame(SBMP_FrmInst *frm)
 }
 
 /** Send a byte in the currently open frame */
-bool sbmp_frm_send_byte(SBMP_FrmInst *frm, uint8_t byte)
+bool FLASH_FN sbmp_frm_send_byte(SBMP_FrmInst *frm, uint8_t byte)
 {
 	if (!frm->tx_enabled) {
 		sbmp_error("Can't tx, not enabled.");
@@ -411,7 +410,7 @@ bool sbmp_frm_send_byte(SBMP_FrmInst *frm, uint8_t byte)
 }
 
 /** Send a buffer in the currently open frame */
-uint16_t sbmp_frm_send_buffer(SBMP_FrmInst *frm, const uint8_t *buffer, uint16_t length)
+uint16_t FLASH_FN sbmp_frm_send_buffer(SBMP_FrmInst *frm, const uint8_t *buffer, uint16_t length)
 {
 	if (! frm->tx_enabled) {
 		sbmp_error("Can't tx, not enabled.");
