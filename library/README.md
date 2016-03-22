@@ -1,4 +1,4 @@
-SBMP library, v1.3
+SBMP library, v1.4
 ==================
 
 This is a reference implementation of SBMP, which should be usable in embedded
@@ -12,10 +12,10 @@ How to use
 The framing layer is isolated in the `sbmp_frame` module, and can be used on it's own,
 if sessions are not needed. That gives you reliable data transfer with error detection.
 
-If you want to *get the most out of SBMP*, use the session layer. Session layer functions are 
+If you want to *get the most out of SBMP*, use the session layer. Session layer functions are
 namespaced `sbmp_ep_` ("ep" stands for endpoint).
 
-All header files are included in `sbmp.h`, which is the only file you should 
+All header files are included in `sbmp.h`, which is the only file you should
 `#include` in your application.
 
 Read comments in the examples to see how to use the library.
@@ -36,7 +36,7 @@ Basically disable all you can in the config file.
 - Logging is useless if there's only one USART anyway
 - CRC32 can be replaced with XOR if you don't care about reliability that much.
 
-This gains you a huge size reduction, and the whole library will take only around 
+This gains you a huge size reduction, and the whole library will take only around
 2.5 kB flash and 150 B ram (of course, not including your Rx buffer).
 
 It works really well for ATmega328P - the usual Arduino chip.
@@ -48,9 +48,9 @@ This example uses the [AVR C boilerplate](https://github.com/MightyPork/avr-c-bo
 
 It's here just to show how to set up SBMP in your AVR application.
 
-**NOTE:** This example uses static allocation of the struct and buffer. 
+**NOTE:** This example uses static allocation of the struct and buffer.
 
-If you pass NULLs to the init function, it will `malloc()` it for you 
+If you pass NULLs to the init function, it will `malloc()` it for you
 and return a pointer to the Endpoint.
 
 ```c

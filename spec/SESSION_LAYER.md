@@ -2,7 +2,7 @@
 
 <i>
 Simple Binary Messaging Protocol specification <br>
-rev. 1.3, 15 March 2016
+rev. 1.4, 22 March 2016
 </i>
 
 The messaging protocol uses a simple session system, which allows to perform
@@ -67,15 +67,15 @@ Two unrelated requests should never use the same session number.
 The highest bit of the session number is reserved to identify which party
 started the session.
 
-```none
-+---------------------------------+
-| Session number field            |
-+------------+--------------------+
-| origin bit | S.N. 0x0000-0x7FFF |
-+------------+--------------------+
+This is how you'd typically obtain a session number from the origin
+bit and a session counter:
+
+```c
+uint16_t session = (origin << 15) | (counter & 0x7FFF);
 ```
 
-This ensures the two parties can never start a session with the same number.
+This ensures the two parties can never start a session with the same number,
+if their origin bit differs.
 
 
 ### Handshake - origin arbitration
@@ -102,6 +102,7 @@ Request to claim the origin bit "1",
 +------+------+----------+---------------+------+------+
 | 0x00 | 0x80 |   0x00   |      32       | 0x64 | 0x00 |
 +------+------+----------+---------------+------+------+
+  Session 0:1     1 byte      1 byte         Size 0:1
 
 Please note that the S.N. is litte-endian.
 ```
@@ -128,6 +129,7 @@ Response - "acknowledge"
 +------+------+------+---------------+------+------+
 | 0x00 | 0x80 | 0x01 |       0       | 0x20 | 0x00 |
 +------+------+------+---------------+------+------+
+  Session 0:1  1 byte    1 byte         Size 0:1
 ```
 
 - If the receiving party has acknowledged *our* origin bit, it accepts the
