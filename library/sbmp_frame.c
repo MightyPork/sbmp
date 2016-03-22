@@ -410,6 +410,8 @@ bool sbmp_frm_send_byte(SBMP_FrmInst *frm, uint8_t byte)
 	cksum_update(frm->tx_cksum_type, &frm->tx_cksum_scratch, byte);
 	frm->tx_remain--;
 
+	//  this was the last bute of the frame payload
+	// send checksum and go idle.
 	if (frm->tx_remain == 0) {
 		end_frame(frm); // checksum & go idle
 	}

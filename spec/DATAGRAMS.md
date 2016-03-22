@@ -89,14 +89,11 @@ If the peer does not support seeking, and the offset is discontinuous
 peer should abort the transfer using 0x07 (*Bulk transfer abort*).
 
 ```none
-+------------+----------------+- - - - - - -+
-| Offset 0:3 | Chunk size 0:1 |  user data  |
-+------------+----------------+- - - - - - -+
++------------+----------------+
+| Offset 0:3 | Chunk size 0:1 |
++------------+----------------+
 note: '0:3' indicates a 4-byte number in little endian
 ```
-
-The "user data" portion of the packet is free to be used for additional 
-implementation-specific information, and can be left empty.
 
 
 #### 0x06 - Bulk transfer data payload

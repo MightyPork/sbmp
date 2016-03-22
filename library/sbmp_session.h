@@ -156,14 +156,14 @@ bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length
  */
 bool sbmp_ep_start_message(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t *sesn_ptr);
 
-/**
- * @brief Send one byte in the current message
- *
- * @param ep    : Endpoint struct
- * @param byte  : byte to send
- * @return true on success
- */
-bool sbmp_ep_send_byte(SBMP_Endpoint *ep, uint8_t byte);
+/** Send one byte in the current message */
+bool sbmp_ep_send_u8(SBMP_Endpoint *ep, uint8_t byte);
+
+/** Send one 16-bit word in the current message */
+bool sbmp_ep_send_u16(SBMP_Endpoint *ep, uint16_t word);
+
+/** Send one 32-bit word in the current message */
+bool sbmp_ep_send_u32(SBMP_Endpoint *ep, uint32_t word);
 
 /**
  * @brief Send a data buffer (or a part) in the current message
@@ -171,9 +171,10 @@ bool sbmp_ep_send_byte(SBMP_Endpoint *ep, uint8_t byte);
  * @param ep     : Endpoint struct
  * @param buffer : buffer of bytes to send
  * @param length : buffer length (byte count)
+ * @param sent_bytes_ptr : Var to store NR of sent bytes. NULL = don't store.
  * @return actual sent length (until payload is full)
  */
-uint16_t sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t length);
+bool sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t length, uint16_t *sent_bytes_ptr);
 
 /**
  * @brief Send a message in a new session.
@@ -221,7 +222,7 @@ bool sbmp_ep_send_message(
  * @param ep : Endpoint struct ptr
  * @return number
  */
-uint16_t sbmp_ep_next_session_number(SBMP_Endpoint *ep);
+uint16_t sbmp_ep_new_session(SBMP_Endpoint *ep);
 
 /**
  * @brief Start a handshake (origin bit arbitration)

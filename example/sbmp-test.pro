@@ -15,7 +15,8 @@ SOURCES += \
     sbmp/sbmp_session.c \
     main_frm_dg.c \
     sbmp/sbmp_logging.c \
-    sbmp/sbmp_checksum.c
+    sbmp/sbmp_checksum.c \
+    sbmp/sbmp_bulk.c
 
 HEADERS += \
     crc32.h \
@@ -26,7 +27,8 @@ HEADERS += \
     sbmp/crc32.h \
     sbmp/sbmp_logging.h \
     sbmp/sbmp_checksum.h \
-    sbmp/sbmp_config.h
+    sbmp/sbmp_config.h \
+    sbmp/sbmp_bulk.h
 
 DISTFILES += \
     Makefile \

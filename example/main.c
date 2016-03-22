@@ -135,7 +135,7 @@ int main(void)
 		// NOTE: it still won't work right here, it's here for illustration only
 
 		// first get the session number, and register the listener
-		sesn = sbmp_ep_next_session_number(alice);
+		sesn = sbmp_ep_new_session(alice);
 		sbmp_ep_add_listener(alice, sesn, alice_40_listener);
 
 		// use the "response" function instead of "message" - they are the same apart from the session number handling

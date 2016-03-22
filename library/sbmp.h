@@ -21,5 +21,6 @@
 // Datagram & session layer
 #include "sbmp_datagram.h"
 #include "sbmp_session.h"
+#include "sbmp_bulk.h"
 
 #endif /* SBMP_H */

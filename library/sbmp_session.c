@@ -44,27 +44,27 @@ static void ep_rx_handler(uint8_t *buf, uint16_t len, void *token)
  * @return the endpoint struct pointer (allocated if ep was NULL)
  */
 SBMP_Endpoint *sbmp_ep_init(
-		// endpoint struct, NULL to malloc.
-		SBMP_Endpoint *ep,
-		// payload buffer, NULL to malloc.
-		uint8_t *buffer, uint16_t buffer_size,
-		// receive handler
-		void (*dg_rx_handler)(SBMP_Datagram *dg),
-		// byte transmit function for the framing layer
-		void (*tx_func)(uint8_t byte))
+	// endpoint struct, NULL to malloc.
+	SBMP_Endpoint *ep,
+	// payload buffer, NULL to malloc.
+	uint8_t *buffer, uint16_t buffer_size,
+	// receive handler
+	void (*dg_rx_handler)(SBMP_Datagram *dg),
+	// byte transmit function for the framing layer
+	void (*tx_func)(uint8_t byte))
 {
 	// indicate that the obj was malloc'd here, and should be freed on error
 	bool ep_mallocd = false;
 
 	if (ep == NULL) {
 		// request to allocate it
-		#if SBMP_MALLOC
-			ep = malloc(sizeof(SBMP_Endpoint));
-			if (!ep) return NULL; // malloc failed
-			ep_mallocd = true;
-		#else
-			return NULL; // fail
-		#endif
+#if SBMP_MALLOC
+		ep = malloc(sizeof(SBMP_Endpoint));
+		if (!ep) return NULL; // malloc failed
+		ep_mallocd = true;
+#else
+		return NULL; // fail
+#endif
 	}
 
 	// set the listener fields
@@ -105,15 +105,15 @@ bool sbmp_ep_init_listeners(SBMP_Endpoint *ep, SBMP_SessionListenerSlot *listene
 	// NULL is allowed only if count is 0
 	if (listener_slots == NULL && slot_count > 0) {
 		// request to allocate it
-		#if SBMP_MALLOC
-			// calloc -> make sure all listeners are NULL = unused
-			listener_slots = calloc(slot_count, sizeof(SBMP_SessionListenerSlot));
-			if (!listener_slots) { // malloc failed
-				return false;
-			}
-		#else
+#if SBMP_MALLOC
+		// calloc -> make sure all listeners are NULL = unused
+		listener_slots = calloc(slot_count, sizeof(SBMP_SessionListenerSlot));
+		if (!listener_slots) { // malloc failed
 			return false;
-		#endif
+		}
+#else
+		return false;
+#endif
 	}
 
 	// set the listener fields
@@ -192,7 +192,7 @@ void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable)
 // ---
 
 /** Get a new session number */
-uint16_t sbmp_ep_next_session_number(SBMP_Endpoint *ep)
+uint16_t sbmp_ep_new_session(SBMP_Endpoint *ep)
 {
 	uint16_t sesn = ep->next_session;
 
@@ -223,7 +223,7 @@ bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length
 /** Start a message in a new session */
 bool sbmp_ep_start_message(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t *sesn_ptr)
 {
-	uint16_t sn = sbmp_ep_next_session_number(ep);
+	uint16_t sn = sbmp_ep_new_session(ep);
 
 	bool suc = sbmp_ep_start_response(ep, type, length, sn);
 	if (suc) {
@@ -234,15 +234,36 @@ bool sbmp_ep_start_message(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length,
 }
 
 /** Send one byte in the current message */
-bool sbmp_ep_send_byte(SBMP_Endpoint *ep, uint8_t byte)
+bool sbmp_ep_send_u8(SBMP_Endpoint *ep, uint8_t byte)
 {
 	return sbmp_frm_send_byte(&ep->frm, byte);
 }
 
-/** Send a data buffer (or a part) in the current message */
-uint16_t sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t length)
+/** Send one word in the current message */
+bool sbmp_ep_send_u16(SBMP_Endpoint *ep, uint16_t word)
 {
-	return sbmp_frm_send_buffer(&ep->frm, buffer, length);
+	return sbmp_frm_send_byte(&ep->frm, word & 0xFF)
+			&& sbmp_frm_send_byte(&ep->frm, (word >> 8) & 0xFF);
+}
+
+/** Send one word in the current message */
+bool sbmp_ep_send_u32(SBMP_Endpoint *ep, uint32_t word)
+{
+	return sbmp_frm_send_byte(&ep->frm, word & 0xFF)
+			&& sbmp_frm_send_byte(&ep->frm, (word >> 8) & 0xFF)
+			&& sbmp_frm_send_byte(&ep->frm, (word >> 16) & 0xFF)
+			&& sbmp_frm_send_byte(&ep->frm, (word >> 24) & 0xFF);
+}
+
+/** Send a data buffer (or a part) in the current message */
+bool sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t length, uint16_t *sent_bytes_ptr)
+{
+	if (length == 0) return true;
+
+	uint16_t sent = sbmp_frm_send_buffer(&ep->frm, buffer, length);
+
+	if (sent_bytes_ptr != NULL) *sent_bytes_ptr = sent;
+	return (sent == length);
 }
 
 /** Rx, pass to framing layer */
@@ -256,37 +277,30 @@ SBMP_RxStatus sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte)
 
 /** Send a message in a session. */
 bool sbmp_ep_send_response(
-		SBMP_Endpoint *ep,
-		SBMP_DgType type,
-		const uint8_t *buffer,
-		uint16_t length,
-		uint16_t sesn,
-		uint16_t *sent_bytes_ptr)
+	SBMP_Endpoint *ep,
+	SBMP_DgType type,
+	const uint8_t *buffer,
+	uint16_t length,
+	uint16_t sesn,
+	uint16_t *sent_bytes_ptr)
 {
-	bool suc = sbmp_ep_start_response(ep, type, length, sesn);
-
-	if (suc) {
-		uint16_t sent = sbmp_ep_send_buffer(ep, buffer, length);
-
-		if (sent_bytes_ptr != NULL) *sent_bytes_ptr = sent;
-	}
-
-	return suc;
+	return sbmp_ep_start_response(ep, type, length, sesn)
+			&& sbmp_ep_send_buffer(ep, buffer, length, sent_bytes_ptr);
 }
 
 /** Send message in a new session */
 bool sbmp_ep_send_message(
-		SBMP_Endpoint *ep,
-		SBMP_DgType type,
-		const uint8_t *buffer,
-		uint16_t length,
-		uint16_t *sesn_ptr,
-		uint16_t *sent_bytes_ptr)
+	SBMP_Endpoint *ep,
+	SBMP_DgType type,
+	const uint8_t *buffer,
+	uint16_t length,
+	uint16_t *sesn_ptr,
+	uint16_t *sent_bytes_ptr)
 {
 	// This juggling with session nr is because it wouldn't work
 	// without actual hardware delay otherwise.
 
-	uint16_t sn = sbmp_ep_next_session_number(ep);
+	uint16_t sn = sbmp_ep_new_session(ep);
 
 	uint16_t old_sesn = 0;
 	if (sesn_ptr != NULL) {
@@ -297,9 +311,7 @@ bool sbmp_ep_send_message(
 	bool suc = sbmp_ep_send_response(ep, type, buffer, length, sn, sent_bytes_ptr);
 
 	if (!suc) {
-		if (sesn_ptr != NULL) {
-			*sesn_ptr = old_sesn; // restore
-		}
+		if (sesn_ptr != NULL) *sesn_ptr = old_sesn; // restore
 	}
 
 	return suc;
