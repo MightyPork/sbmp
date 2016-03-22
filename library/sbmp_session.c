@@ -170,25 +170,6 @@ void sbmp_ep_set_preferred_cksum(SBMP_Endpoint *endp, SBMP_CksumType cksum_type)
 	endp->pref_cksum = cksum_type;
 }
 
-
-/** Enable or disable RX in the FrmInst backing this Endpoint */
-void sbmp_ep_enable_rx(SBMP_Endpoint *ep, bool enable_rx)
-{
-	sbmp_frm_enable_rx(&ep->frm, enable_rx);
-}
-
-/** Enable or disable TX in the FrmInst backing this Endpoint */
-void sbmp_ep_enable_tx(SBMP_Endpoint *ep, bool enable_tx)
-{
-	sbmp_frm_enable_tx(&ep->frm, enable_tx);
-}
-
-/** Enable or disable Rx & TX in the FrmInst backing this Endpoint */
-void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable)
-{
-	sbmp_frm_enable(&ep->frm, enable);
-}
-
 // ---
 
 /** Get a new session number */
@@ -233,12 +214,6 @@ bool sbmp_ep_start_message(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length,
 	return suc;
 }
 
-/** Send one byte in the current message */
-bool sbmp_ep_send_u8(SBMP_Endpoint *ep, uint8_t byte)
-{
-	return sbmp_frm_send_byte(&ep->frm, byte);
-}
-
 /** Send one word in the current message */
 bool sbmp_ep_send_u16(SBMP_Endpoint *ep, uint16_t word)
 {
@@ -264,12 +239,6 @@ bool sbmp_ep_send_buffer(SBMP_Endpoint *ep, const uint8_t *buffer, uint16_t leng
 
 	if (sent_bytes_ptr != NULL) *sent_bytes_ptr = sent;
 	return (sent == length);
-}
-
-/** Rx, pass to framing layer */
-SBMP_RxStatus sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte)
-{
-	return sbmp_frm_receive(&ep->frm, byte);
 }
 
 
