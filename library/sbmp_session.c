@@ -37,26 +37,66 @@ static void ep_rx_handler(uint8_t *buf, uint16_t len, void *token)
  * @param ep          : Endpoint var pointer, or NULL to allocate one.
  * @param buffer      : Rx buffer. NULL to allocate one.
  * @param buffer_size : Rx buffer length
+ * @param listener_slots      : session listener slots (for multi-message sessions), NULL to malloc.
+ * @param listener_slot_count : number of slots in the array (or to allocate)
  * @return the endpoint struct pointer (allocated if ep was NULL)
  */
 SBMP_Endpoint *sbmp_ep_init(
+		// endpoint struct, NULL to malloc.
 		SBMP_Endpoint *ep,
-		uint8_t *buffer,
-		uint16_t buffer_size,
+		// payload buffer, NULL to malloc.
+		uint8_t *buffer, uint16_t buffer_size,
+		// session listener slots (for multi-message sessions), NULL to malloc.
+		SBMP_SessionListenerSlot *listener_slots, uint16_t listener_slot_count,
+		// receive handler
 		void (*dg_rx_handler)(SBMP_Datagram *dg),
+		// byte transmit function for the framing layer
 		void (*tx_func)(uint8_t byte))
 {
+	// indicate that the obj was malloc'd here, and should be freed on error
+	bool ep_mallocd = false;
+	bool slots_mallocd = false;
+
 	if (ep == NULL) {
 		// request to allocate it
 		#if SBMP_MALLOC
 			ep = malloc(sizeof(SBMP_Endpoint));
+			if (!ep) return NULL; // malloc failed
+			ep_mallocd = true;
 		#else
 			return NULL; // fail
 		#endif
 	}
 
+	// NULL is allowed only if count is 0
+	if (listener_slots == NULL && listener_slot_count > 0) {
+		// request to allocate it
+		#if SBMP_MALLOC
+			listener_slots = malloc(sizeof(SBMP_SessionListenerSlot) * listener_slot_count);
+			if (!listener_slots) { // malloc failed
+				if (ep_mallocd) free(ep);
+				return NULL;
+			}
+			slots_mallocd = true;
+		#else
+			// can't malloc
+			if (ep_mallocd) free(ep);
+			return NULL;
+		#endif
+	}
+
+	// set the listener fields
+	ep->listeners = listener_slots;
+	ep->listener_count = listener_slot_count;
+
 	// set up the framing layer
-	sbmp_frm_init(&ep->frm, buffer, buffer_size, ep_rx_handler, tx_func);
+	SBMP_FrmInst *alloc_frm = sbmp_frm_init(&ep->frm, buffer, buffer_size, ep_rx_handler, tx_func);
+	if (alloc_frm == NULL) {
+		// the buffer or frm allocation failed
+		if (ep_mallocd) free(ep);
+		if (slots_mallocd) free(listener_slots);
+		return NULL;
+	}
 
 	// set token, so callback knows what EP it's for.
 	sbmp_frm_set_user_token(&ep->frm, (void *) ep);
@@ -241,7 +281,7 @@ bool sbmp_ep_send_message(
 	// This juggling with session nr is because it wouldn't work
 	// without actual hardware delay otherwise.
 
-	uint16_t sn = next_session(ep);;
+	uint16_t sn = next_session(ep);
 
 	uint16_t old_sesn = 0;
 	if (sesn_ptr != NULL) {

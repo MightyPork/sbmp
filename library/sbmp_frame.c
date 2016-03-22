@@ -20,17 +20,24 @@ SBMP_FrmInst *sbmp_frm_init(
 	void (*rx_handler)(uint8_t *, uint16_t, void *),
 	void (*tx_func)(uint8_t))
 {
+	bool frm_mallocd = false;
 
 #if SBMP_MALLOC
 
 	if (frm == NULL) {
 		// caller wants us to allocate it
 		frm = malloc(sizeof(SBMP_FrmInst));
+		if (frm == NULL) return NULL; // malloc failed
+		frm_mallocd = true;
 	}
 
 	if (buffer == NULL) {
 		// caller wants us to allocate it
 		buffer = malloc(buffer_size);
+		if (buffer == NULL) { // malloc failed
+			if (frm_mallocd) free(frm);
+			return NULL;
+		}
 	}
 
 #else

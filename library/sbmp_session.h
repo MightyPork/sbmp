@@ -22,6 +22,9 @@
 #include "sbmp_datagram.h"
 #include "sbmp_frame.h"
 
+/**
+ * Handshake status
+ */
 typedef enum {
 	SBMP_HSK_NOT_STARTED = 0,     /*!< Initial state, unconfigured */
 	SBMP_HSK_SUCCESS = 1,         /*!< Handshake done, origin assigned. */
@@ -29,11 +32,33 @@ typedef enum {
 	SBMP_HSK_CONFLICT = 3,        /*!< Conflict occured during HSK */
 } SBMP_HandshakeStatus;
 
+/** Forward declaration of the endpoint struct */
+typedef struct SBMP_Endpoint_struct SBMP_Endpoint;
 
-/** SBMP Endpoint (session)  structure */
+/**
+ * Session listener function.
+ */
+typedef void (*SBMP_SessionListener)(SBMP_Endpoint *ep, SBMP_Datagram *dg);
+
+/**
+ * Session listener slot.
+ *
+ * Used internally when session listener is installed,
+ * declared in the header to allow static allocation.
+ */
 typedef struct {
+	uint16_t session;
+	bool used;
+	SBMP_SessionListener listener;
+} SBMP_SessionListenerSlot;
+
+/** SBMP Endpoint (session) structure */
+struct SBMP_Endpoint_struct {
 	bool origin;                     /*!< Local origin bit */
 	uint16_t next_session;           /*!< Next session number */
+
+	SBMP_SessionListenerSlot *listeners; /*!< Array of session listener slots */
+	uint16_t listener_count;             /*!< length of the session listener slot array */
 
 	void (*rx_handler)(SBMP_Datagram *dg);  /*!< Datagram receive handler */
 
@@ -54,7 +79,8 @@ typedef struct {
 										  not only until the callback ends. Disabling the EP in the Rx
 										  callback lets you preserve the Dg for a longer period -
 										  i.e. put it in a global var, where a loop retrieves it. */
-} SBMP_Endpoint;
+};
+
 
 
 /**
@@ -75,6 +101,8 @@ typedef struct {
 SBMP_Endpoint *sbmp_ep_init(SBMP_Endpoint *ep,
 							uint8_t *buffer,
 							uint16_t buffer_size,
+							SBMP_SessionListenerSlot* listener_slots,
+							uint16_t listener_slot_count,
 							void (*dg_rx_handler)(SBMP_Datagram *dg),
 							void (*tx_func)(uint8_t byte));
 
