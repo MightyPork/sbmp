@@ -106,10 +106,13 @@ bool sbmp_ep_init_listeners(SBMP_Endpoint *ep, SBMP_SessionListenerSlot *listene
 	if (listener_slots == NULL && slot_count > 0) {
 		// request to allocate it
 #if SBMP_MALLOC
-		// calloc -> make sure all listeners are NULL = unused
-		listener_slots = calloc(slot_count, sizeof(SBMP_SessionListenerSlot));
+		listener_slots = malloc(slot_count * sizeof(SBMP_SessionListenerSlot));
 		if (!listener_slots) { // malloc failed
 			return false;
+		}
+		//zero out (no calloc?)
+		for (int i = 0; i < slot_count; i++) {
+			listener_slots[i].callback = NULL;
 		}
 #else
 		return false;
