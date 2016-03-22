@@ -17,9 +17,21 @@
 #include "sbmp_frame.h"
 
 typedef uint8_t SBMP_DgType;
-#define SBMP_DG_HSK_START    0x00
-#define SBMP_DG_HSK_ACCEPT   0x01
-#define SBMP_DG_HSK_CONFLICT 0x02
+
+// Hand-shake
+#define DG_HANDSHAKE_START    0x00
+#define DG_HANDSHAKE_ACCEPT   0x01
+#define DG_HANDSHAKE_CONFLICT 0x02
+
+// Ping (for testing - hand-shake is better to assure the peer is present)
+#define DG_PING 0x03
+
+// Bulk data transfer
+#define DG_BULK_OFFER 0x04
+#define DG_BULK_REQUEST 0x05
+#define DG_BULK_DATA 0x06
+#define DG_BULK_ABORT 0x07
+
 
 /**
  * SBMP datagram object.

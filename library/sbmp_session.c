@@ -350,7 +350,7 @@ bool sbmp_ep_start_handshake(SBMP_Endpoint *ep)
 
 	ep->hsk_status = SBMP_HSK_AWAIT_REPLY;
 
-	bool suc = sbmp_ep_send_message(ep, SBMP_DG_HSK_START, buf, 3, &ep->hsk_session, NULL);
+	bool suc = sbmp_ep_send_message(ep, DG_HSK_START, buf, 3, &ep->hsk_session, NULL);
 
 	if (!suc) {
 		ep->hsk_status = SBMP_HSK_NOT_STARTED;
@@ -382,9 +382,9 @@ void sbmp_ep_abort_handshake(SBMP_Endpoint *ep)
  */
 static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 {
-	bool hsk_start = (dg->type == SBMP_DG_HSK_START);
-	bool hsk_accept = (dg->type == SBMP_DG_HSK_ACCEPT);
-	bool hsk_conflict = (dg->type == SBMP_DG_HSK_CONFLICT);
+	bool hsk_start = (dg->type == DG_HSK_START);
+	bool hsk_accept = (dg->type == DG_HSK_ACCEPT);
+	bool hsk_conflict = (dg->type == DG_HSK_CONFLICT);
 
 	if (hsk_start || hsk_accept || hsk_conflict) {
 		// prepare payload to send in response
@@ -399,7 +399,7 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 
 			if (ep->hsk_status == SBMP_HSK_AWAIT_REPLY) {
 				// conflict occured - we're already waiting for a reply.
-				sbmp_ep_send_response(ep, SBMP_DG_HSK_CONFLICT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
+				sbmp_ep_send_response(ep, DG_HSK_CONFLICT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
 				ep->hsk_status = SBMP_HSK_CONFLICT;
 
 				sbmp_error("HSK conflict");
@@ -416,7 +416,7 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 				ep->hsk_status = SBMP_HSK_SUCCESS;
 
 				// Send Accept response
-				sbmp_ep_send_response(ep, SBMP_DG_HSK_ACCEPT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
+				sbmp_ep_send_response(ep, DG_HSK_ACCEPT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
 			}
 		} else if (hsk_accept) {
 			// peer accepted our request
