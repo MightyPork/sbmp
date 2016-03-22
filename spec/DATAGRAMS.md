@@ -15,12 +15,20 @@ rev. 1.4, 22 March 2016
 | 0x01          | Handshake confirmation (origin request accepted)
 | 0x02          | Handshake conflict
 
-The handshake payload structure is specified in [SESSION_LAYER.md](SESSION_LAYER.md):
+The handshake payload structure is specified in 
+[SESSION_LAYER.md](SESSION_LAYER.md).
+
+Both request and confirmation datagrams have the same structure, the conflict
+datagram has no data payload.
 
 ```none
-preferred_checksum_type : 1 byte
-rx_buffer_size          : 2 bytes
+ Handshake payload
++-------------------------+--------------------+
+| Preferred checksum type | rx_buffer_size 0:1 |
++-------------------------+--------------------+
 ```
+
+See the session layer spec for more details.
 
 All messages in a handshake must have the same session number, otherwise the
 handshake will fail.
@@ -37,6 +45,8 @@ to control the handshake.**
 
 The receiving party is obliged to reply with the same type and the same session
 number.
+
+This datagram has no data payload.
 
 This datagram type can be used to check that the other peer is working
 properly.
@@ -75,9 +85,9 @@ The rest of the datagram is unspecified and can be used for user data
 (implementation specific).
 
 ```none
-+----------+----------+----------+----------+- - - - - - -+
-| Length 0 | Length 1 | Length 2 | Length 3 |  user data  |
-+----------+----------+----------+----------+- - - - - - -+
++------------+- - - - - - -+
+| Length 0:3 |  user data  |
++------------+- - - - - - -+
 ```
 
 The *Bulk transfer offer* packet can be sent as a response to a request (user 
@@ -88,8 +98,8 @@ to describe what kind of data is available.
 
 #### 0x05 - Bulk transfer data request
 
-This datagram is a response to the 0x04 (*Bulk transfer offer*), and must have the
-same session number, so the peer knows what data is requested.
+This datagram is a response to the 0x04 (*Bulk transfer offer*), and must have 
+the same session number, so the peer knows what data is requested.
 
 The payload consists of a data offset, and a chunk size.
 
@@ -98,9 +108,10 @@ If the peer does not support seeking, and the offset is discontinuous
 peer should abort the transfer using 0x07 (*Bulk transfer abort*).
 
 ```none
-+----------+----------+----------+----------+---------+---------+- - - - - - -+
-| Offset 0 | Offset 1 | Offset 2 | Offset 3 | Chunk 0 | Chunk 1 |  user data  |
-+----------+----------+----------+----------+---------+---------+- - - - - - -+
++------------+----------------+- - - - - - -+
+| Offset 0:3 | Chunk size 0:1 |  user data  |
++------------+----------------+- - - - - - -+
+note: '0:3' indicates a 4-byte number in little endian
 ```
 
 The "user data" portion of the packet is free to be used for additional 
@@ -141,6 +152,8 @@ Examples when this datagram is used:
 - The requested offset cannot be served (ie. the data is read from hardware when
   requested, and it's not possible to read the same data again)
 
+This datagram has no data payload.
+
 
 ### User datagrams
 
@@ -155,12 +168,14 @@ use numbers >= 100 for user payloads.
 The protocol is little-endian, LSB is always sent first:
 
 ```none
-+-----+-----+
-| LSB | MSB |
-+-----+-----+
++---------+
+| LSB:MSB |
++---------+
 ```
 
-*Follow some non-normative suggestions*
+---
+
+*The following are some non-normative suggestions*
 
 **Strings** can be encoded either as null-terminated C strings, or length-prefixed.
 
