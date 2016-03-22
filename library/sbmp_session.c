@@ -16,6 +16,8 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg);
 // Datagram header length - 2 B sesn, 1 B type
 #define DATAGRA_HEADER_LEN 3
 
+#define SESSION2ORIGIN(session) (((session) & 0x8000) >> 15)
+
 
 /** Rx handler that is assigned to the framing layer */
 static void ep_rx_handler(uint8_t *buf, uint16_t len, void *token)
@@ -135,7 +137,7 @@ void sbmp_ep_reset(SBMP_Endpoint *ep)
 
 	// init the handshake status
 	ep->hsk_session = 0;
-	ep->hsk_status = SBMP_HSK_NOT_STARTED;
+	ep->hsk_status = SBMP_HSK_IDLE;
 
 	ep->peer_buffer_size = 0xFFFF; // max possible buffer
 
@@ -350,10 +352,10 @@ bool sbmp_ep_start_handshake(SBMP_Endpoint *ep)
 
 	ep->hsk_status = SBMP_HSK_AWAIT_REPLY;
 
-	bool suc = sbmp_ep_send_message(ep, DG_HSK_START, buf, 3, &ep->hsk_session, NULL);
+	bool suc = sbmp_ep_send_message(ep, DG_HANDSHAKE_START, buf, 3, &ep->hsk_session, NULL);
 
 	if (!suc) {
-		ep->hsk_status = SBMP_HSK_NOT_STARTED;
+		ep->hsk_status = SBMP_HSK_IDLE;
 	}
 
 	return suc;
@@ -369,7 +371,7 @@ SBMP_HandshakeStatus sbmp_ep_handshake_status(SBMP_Endpoint *ep)
 void sbmp_ep_abort_handshake(SBMP_Endpoint *ep)
 {
 	ep->hsk_session = 0;
-	ep->hsk_status = SBMP_HSK_NOT_STARTED;
+	ep->hsk_status = SBMP_HSK_IDLE;
 }
 
 /**
@@ -382,9 +384,9 @@ void sbmp_ep_abort_handshake(SBMP_Endpoint *ep)
  */
 static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 {
-	bool hsk_start = (dg->type == DG_HSK_START);
-	bool hsk_accept = (dg->type == DG_HSK_ACCEPT);
-	bool hsk_conflict = (dg->type == DG_HSK_CONFLICT);
+	bool hsk_start = (dg->type == DG_HANDSHAKE_START);
+	bool hsk_accept = (dg->type == DG_HANDSHAKE_ACCEPT);
+	bool hsk_conflict = (dg->type == DG_HANDSHAKE_CONFLICT);
 
 	if (hsk_start || hsk_accept || hsk_conflict) {
 		// prepare payload to send in response
@@ -399,13 +401,13 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 
 			if (ep->hsk_status == SBMP_HSK_AWAIT_REPLY) {
 				// conflict occured - we're already waiting for a reply.
-				sbmp_ep_send_response(ep, DG_HSK_CONFLICT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
+				sbmp_ep_send_response(ep, DG_HANDSHAKE_CONFLICT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
 				ep->hsk_status = SBMP_HSK_CONFLICT;
 
 				sbmp_error("HSK conflict");
 			} else {
 				// we're idle, accept the request.
-				bool peer_origin = (dg->session & 0x8000) >> 15;
+				bool peer_origin = SESSION2ORIGIN(dg->session);
 				sbmp_ep_set_origin(ep, !peer_origin);
 
 				// read peer's info
@@ -416,7 +418,7 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 				ep->hsk_status = SBMP_HSK_SUCCESS;
 
 				// Send Accept response
-				sbmp_ep_send_response(ep, DG_HSK_ACCEPT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
+				sbmp_ep_send_response(ep, DG_HANDSHAKE_ACCEPT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
 			}
 		} else if (hsk_accept) {
 			// peer accepted our request
@@ -454,8 +456,6 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 		}
 
 	} else {
-		// Not a HSK message
-
 		// try listeners first...
 		for (int i = 0; i < ep->listener_count; i++) {
 			SBMP_SessionListenerSlot *slot = &ep->listeners[i];

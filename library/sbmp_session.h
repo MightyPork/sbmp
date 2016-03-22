@@ -26,11 +26,12 @@
  * Handshake status
  */
 typedef enum {
-	SBMP_HSK_NOT_STARTED = 0,     /*!< Initial state, unconfigured */
-	SBMP_HSK_SUCCESS = 1,         /*!< Handshake done, origin assigned. */
+	SBMP_HSK_IDLE = 0,            /*!< Initial state, origin unconfigured. Idle. */
+	SBMP_HSK_SUCCESS = 1,         /*!< Handshake done, origin assigned. Idle. */
 	SBMP_HSK_AWAIT_REPLY = 2,     /*!< Request sent, awaiting a reply */
 	SBMP_HSK_CONFLICT = 3,        /*!< Conflict occured during HSK */
 } SBMP_HandshakeStatus;
+
 
 /** Forward declaration of the endpoint struct */
 typedef struct SBMP_Endpoint_struct SBMP_Endpoint;
@@ -231,6 +232,9 @@ bool sbmp_ep_start_handshake(SBMP_Endpoint *ep);
 /** Abort current handshake & discard hsk session */
 void sbmp_ep_abort_handshake(SBMP_Endpoint *ep);
 
+/** Get current handshake state */
+SBMP_HandshakeStatus sbmp_ep_handshake_status(SBMP_Endpoint *ep);
+
 /**
  * @brief Receive a byte from USART (is passed to the framing layer)
  * @param ep   : Endpoint struct
@@ -238,9 +242,6 @@ void sbmp_ep_abort_handshake(SBMP_Endpoint *ep);
  * @return true if byte was consumed
  */
 SBMP_RxStatus sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte);
-
-/** Get current handshake state */
-SBMP_HandshakeStatus sbmp_ep_handshake_status(SBMP_Endpoint *ep);
 
 /** Enable or disable both Rx and TX in the FrmInst backing this Endpoint */
 void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable);
