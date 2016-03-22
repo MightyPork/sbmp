@@ -104,7 +104,8 @@ bool sbmp_ep_init_listeners(SBMP_Endpoint *ep, SBMP_SessionListenerSlot *listene
 	if (listener_slots == NULL && slot_count > 0) {
 		// request to allocate it
 		#if SBMP_MALLOC
-			listener_slots = malloc(sizeof(SBMP_SessionListenerSlot) * slot_count);
+			// calloc -> make sure all listeners are NULL = unused
+			listener_slots = calloc(slot_count, sizeof(SBMP_SessionListenerSlot));
 			if (!listener_slots) { // malloc failed
 				return false;
 			}
@@ -142,7 +143,7 @@ void sbmp_ep_reset(SBMP_Endpoint *ep)
 }
 
 
-// --- Customizing settings ---
+// ---- Customizing settings ------------------------------------------------
 
 /** Set session number (good to randomize before first message) */
 void sbmp_ep_seed_session(SBMP_Endpoint *ep, uint16_t sesn)
@@ -202,7 +203,7 @@ static uint16_t next_session(SBMP_Endpoint *ep)
 }
 
 
-// --- Header/body send funcs ---
+// ---- Header/body send funcs -------------------------------------------------
 
 /** Start a message as a reply */
 bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t sesn)
@@ -249,7 +250,7 @@ SBMP_RxStatus sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte)
 }
 
 
-// --- All-in-one send funcs ---
+// ---- All-in-one send funcs -----------------------------------------------
 
 /** Send a message in a session. */
 bool sbmp_ep_send_response(
@@ -303,7 +304,8 @@ bool sbmp_ep_send_message(
 }
 
 
-// --- Handshake ---
+// ---- Handshake ------------------------------------------------------
+
 /**
  * Prepare a buffer to send to peer during handshake
  *
@@ -453,7 +455,44 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 
 	} else {
 		// Not a HSK message
+
+		// try listeners first...
+		for (int i = 0; i < ep->listener_count; i++) {
+			SBMP_SessionListenerSlot *slot = &ep->listeners[i];
+			if (slot->callback == NULL) continue; // skip unused
+			if (slot->session == dg->session) {
+				slot->callback(ep, dg); // call the listener
+				return;
+			}
+		}
+
+		// if no listener consumed it, call the default handler
 		ep->rx_handler(dg);
 	}
 }
 
+// ---- Session listeners --------------------------------------------------------------
+
+bool sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_SessionListener callback)
+{
+	for (int i = 0; i < ep->listener_count; i++) {
+		SBMP_SessionListenerSlot *slot = &ep->listeners[i];
+		if (slot->callback != NULL) continue; // skip used slot
+		slot->session = session;
+		slot->callback = callback;
+		return true;
+	}
+	return false;
+}
+
+void sbmp_ep_remove_listener(SBMP_Endpoint *ep, uint16_t session)
+{
+	for (int i = 0; i < ep->listener_count; i++) {
+		SBMP_SessionListenerSlot *slot = &ep->listeners[i];
+		if (slot->callback == NULL) continue; // skip unused
+		if (slot->session == session) {
+			slot->callback = NULL; // mark unused
+			return;
+		}
+	}
+}

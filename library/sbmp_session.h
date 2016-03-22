@@ -48,8 +48,7 @@ typedef void (*SBMP_SessionListener)(SBMP_Endpoint *ep, SBMP_Datagram *dg);
  */
 typedef struct {
 	uint16_t session;
-	bool used;
-	SBMP_SessionListener listener;
+	SBMP_SessionListener callback; // null = unused
 } SBMP_SessionListenerSlot;
 
 /** SBMP Endpoint (session) structure */
@@ -241,5 +240,18 @@ void sbmp_ep_enable_rx(SBMP_Endpoint *ep, bool enable_rx);
 
 /** Enable or disable TX in the FrmInst backing this Endpoint */
 void sbmp_ep_enable_tx(SBMP_Endpoint *ep, bool enable_tx);
+
+/**
+ * Add a session listener
+ * The listener will be used for all incoming messages with the given session nr.
+ *
+ * To unsubscribe, simply remove the listener (possible from within the callback)
+ *
+ * @return success (false if no free slot was found)
+ */
+bool sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_SessionListener callback);
+
+/** Remove a session listener. */
+void sbmp_ep_remove_listener(SBMP_Endpoint *ep, uint16_t session);
 
 #endif /* SBMP_SESSION_H */
