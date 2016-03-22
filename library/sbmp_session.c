@@ -100,7 +100,7 @@ SBMP_Endpoint FLASH_FN *sbmp_ep_init(
 }
 
 
-bool sbmp_ep_init_listeners(SBMP_Endpoint *ep, SBMP_SessionListenerSlot *listener_slots, uint16_t slot_count)
+bool FLASH_FN sbmp_ep_init_listeners(SBMP_Endpoint *ep, SBMP_SessionListenerSlot *listener_slots, uint16_t slot_count)
 {
 	// NULL is allowed only if count is 0
 	if (listener_slots == NULL && slot_count > 0) {
@@ -243,14 +243,14 @@ bool FLASH_FN sbmp_ep_send_u8(SBMP_Endpoint *ep, uint8_t byte)
 }
 
 /** Send one word in the current message */
-bool sbmp_ep_send_u16(SBMP_Endpoint *ep, uint16_t word)
+bool FLASH_FN sbmp_ep_send_u16(SBMP_Endpoint *ep, uint16_t word)
 {
 	return sbmp_frm_send_byte(&ep->frm, word & 0xFF)
 			&& sbmp_frm_send_byte(&ep->frm, (word >> 8) & 0xFF);
 }
 
 /** Send one word in the current message */
-bool sbmp_ep_send_u32(SBMP_Endpoint *ep, uint32_t word)
+bool FLASH_FN sbmp_ep_send_u32(SBMP_Endpoint *ep, uint32_t word)
 {
 	return sbmp_frm_send_byte(&ep->frm, word & 0xFF)
 			&& sbmp_frm_send_byte(&ep->frm, (word >> 8) & 0xFF)
@@ -389,7 +389,7 @@ SBMP_HandshakeStatus FLASH_FN sbmp_ep_handshake_status(SBMP_Endpoint *ep)
 }
 
 /** Abort current handshake & discard hsk session */
-void sbmp_ep_abort_handshake(SBMP_Endpoint *ep)
+void FLASH_FN sbmp_ep_abort_handshake(SBMP_Endpoint *ep)
 {
 	ep->hsk_session = 0;
 	ep->hsk_status = SBMP_HSK_IDLE;
@@ -494,7 +494,7 @@ static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 
 // ---- Session listeners --------------------------------------------------------------
 
-bool sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_SessionListener callback)
+bool FLASH_FN sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_SessionListener callback)
 {
 	for (int i = 0; i < ep->listener_count; i++) {
 		SBMP_SessionListenerSlot *slot = &ep->listeners[i];
@@ -506,7 +506,7 @@ bool sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_SessionListe
 	return false;
 }
 
-void sbmp_ep_remove_listener(SBMP_Endpoint *ep, uint16_t session)
+void FLASH_FN sbmp_ep_remove_listener(SBMP_Endpoint *ep, uint16_t session)
 {
 	for (int i = 0; i < ep->listener_count; i++) {
 		SBMP_SessionListenerSlot *slot = &ep->listeners[i];
