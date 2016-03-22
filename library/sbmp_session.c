@@ -46,8 +46,6 @@ SBMP_Endpoint *sbmp_ep_init(
 		SBMP_Endpoint *ep,
 		// payload buffer, NULL to malloc.
 		uint8_t *buffer, uint16_t buffer_size,
-		// session listener slots (for multi-message sessions), NULL to malloc.
-		SBMP_SessionListenerSlot *listener_slots, uint16_t listener_slot_count,
 		// receive handler
 		void (*dg_rx_handler)(SBMP_Datagram *dg),
 		// byte transmit function for the framing layer
@@ -55,7 +53,6 @@ SBMP_Endpoint *sbmp_ep_init(
 {
 	// indicate that the obj was malloc'd here, and should be freed on error
 	bool ep_mallocd = false;
-	bool slots_mallocd = false;
 
 	if (ep == NULL) {
 		// request to allocate it
@@ -68,33 +65,15 @@ SBMP_Endpoint *sbmp_ep_init(
 		#endif
 	}
 
-	// NULL is allowed only if count is 0
-	if (listener_slots == NULL && listener_slot_count > 0) {
-		// request to allocate it
-		#if SBMP_MALLOC
-			listener_slots = malloc(sizeof(SBMP_SessionListenerSlot) * listener_slot_count);
-			if (!listener_slots) { // malloc failed
-				if (ep_mallocd) free(ep);
-				return NULL;
-			}
-			slots_mallocd = true;
-		#else
-			// can't malloc
-			if (ep_mallocd) free(ep);
-			return NULL;
-		#endif
-	}
-
 	// set the listener fields
-	ep->listeners = listener_slots;
-	ep->listener_count = listener_slot_count;
+	ep->listeners = NULL;
+	ep->listener_count = 0;
 
 	// set up the framing layer
 	SBMP_FrmInst *alloc_frm = sbmp_frm_init(&ep->frm, buffer, buffer_size, ep_rx_handler, tx_func);
-	if (alloc_frm == NULL) {
+	if (!alloc_frm) {
 		// the buffer or frm allocation failed
 		if (ep_mallocd) free(ep);
-		if (slots_mallocd) free(listener_slots);
 		return NULL;
 	}
 
@@ -116,6 +95,29 @@ SBMP_Endpoint *sbmp_ep_init(
 	sbmp_ep_reset(ep);
 
 	return ep;
+}
+
+
+bool sbmp_ep_init_listeners(SBMP_Endpoint *ep, SBMP_SessionListenerSlot *listener_slots, uint16_t slot_count)
+{
+	// NULL is allowed only if count is 0
+	if (listener_slots == NULL && slot_count > 0) {
+		// request to allocate it
+		#if SBMP_MALLOC
+			listener_slots = malloc(sizeof(SBMP_SessionListenerSlot) * slot_count);
+			if (!listener_slots) { // malloc failed
+				return false;
+			}
+		#else
+			return false;
+		#endif
+	}
+
+	// set the listener fields
+	ep->listeners = listener_slots;
+	ep->listener_count = slot_count;
+
+	return true;
 }
 
 /**

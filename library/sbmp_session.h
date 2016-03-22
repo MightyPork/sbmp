@@ -101,10 +101,17 @@ struct SBMP_Endpoint_struct {
 SBMP_Endpoint *sbmp_ep_init(SBMP_Endpoint *ep,
 							uint8_t *buffer,
 							uint16_t buffer_size,
-							SBMP_SessionListenerSlot* listener_slots,
-							uint16_t listener_slot_count,
 							void (*dg_rx_handler)(SBMP_Datagram *dg),
 							void (*tx_func)(uint8_t byte));
+
+/**
+ * @brief Configure session listener slots
+ * @param ep             : Endpoint pointer
+ * @param listener_slots : session listener slots (for multi-message sessions), NULL to malloc.
+ * @param slot_count     : number of slots in the array (or to malloc)
+ * @return success
+ */
+bool sbmp_ep_init_listeners(SBMP_Endpoint *ep, SBMP_SessionListenerSlot *listener_slots, uint16_t slot_count);
 
 /**
  * @brief Reset an endpoint and it's Framing Layer
