@@ -5,6 +5,8 @@
  *
  * The datagram layer on it's own is pretty useless, to get all
  * the benefits, use the session layer on top of it.
+ * 
+ * This example is in the public domain.
  */
 
 #include <stdio.h>

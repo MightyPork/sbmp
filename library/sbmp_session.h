@@ -155,13 +155,53 @@ bool sbmp_ep_start_response(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length
 bool sbmp_ep_start_message(SBMP_Endpoint *ep, SBMP_DgType type, uint16_t length, uint16_t *sesn_ptr);
 
 /** Send one byte in the current message */
-bool sbmp_ep_send_u8(SBMP_Endpoint *ep, uint8_t byte);
+static inline
+bool sbmp_ep_send_u8(SBMP_Endpoint *ep, uint8_t byte)
+{
+	return sbmp_frm_send_byte(&ep->frm, byte);
+}
 
 /** Send one 16-bit word in the current message */
 bool sbmp_ep_send_u16(SBMP_Endpoint *ep, uint16_t word);
 
 /** Send one 32-bit word in the current message */
 bool sbmp_ep_send_u32(SBMP_Endpoint *ep, uint32_t word);
+
+
+/** Send one byte in the current message */
+static inline
+bool sbmp_ep_send_i8(SBMP_Endpoint *ep, int8_t byte)
+{
+	return sbmp_ep_send_u8(ep, *(uint8_t*)&byte);
+}
+
+/** send char (just alias) */
+static inline
+bool sbmp_ep_send_char(SBMP_Endpoint *ep, int8_t byte)
+{
+	return sbmp_ep_send_i8(ep, byte);
+}
+
+/** Send one 16-bit word in the current message */
+static inline
+bool sbmp_ep_send_i16(SBMP_Endpoint *ep, int16_t word)
+{
+	return sbmp_ep_send_u16(ep, *(uint16_t*)&word);
+}
+
+/** Send one 32-bit word in the current message */
+static inline
+bool sbmp_ep_send_i32(SBMP_Endpoint *ep, int32_t word)
+{
+	return sbmp_ep_send_u32(ep, *(uint32_t*)&word);
+}
+
+/** Send one float word in the current message */
+static inline
+bool sbmp_ep_send_float(SBMP_Endpoint *ep, float word)
+{
+	return sbmp_ep_send_u32(ep, *(uint32_t*)&word);
+}
 
 /**
  * @brief Send a data buffer (or a part) in the current message
@@ -240,16 +280,32 @@ SBMP_HandshakeStatus sbmp_ep_handshake_status(SBMP_Endpoint *ep);
  * @param byte : Byte received from USART
  * @return true if byte was consumed
  */
-SBMP_RxStatus sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte);
-
-/** Enable or disable both Rx and TX in the FrmInst backing this Endpoint */
-void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable);
+static inline
+SBMP_RxStatus sbmp_ep_receive(SBMP_Endpoint *ep, uint8_t byte)
+{
+	return sbmp_frm_receive(&ep->frm, byte);
+}
 
 /** Enable or disable RX in the FrmInst backing this Endpoint */
-void sbmp_ep_enable_rx(SBMP_Endpoint *ep, bool enable_rx);
+static inline
+void sbmp_ep_enable_rx(SBMP_Endpoint *ep, bool enable_rx)
+{
+	sbmp_frm_enable_rx(&ep->frm, enable_rx);
+}
 
 /** Enable or disable TX in the FrmInst backing this Endpoint */
-void sbmp_ep_enable_tx(SBMP_Endpoint *ep, bool enable_tx);
+static inline
+void sbmp_ep_enable_tx(SBMP_Endpoint *ep, bool enable_tx)
+{
+	sbmp_frm_enable_tx(&ep->frm, enable_tx);
+}
+
+/** Enable or disable Rx & TX in the FrmInst backing this Endpoint */
+static inline
+void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable)
+{
+	sbmp_frm_enable(&ep->frm, enable);
+}
 
 /**
  * Add a session listener
