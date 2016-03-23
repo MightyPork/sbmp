@@ -8,6 +8,8 @@
  *
  * Finally some messages are sent and received to show that the
  * session layer is working.
+ * 
+ * This example is in the public domain.
  */
 
 #include <stdio.h>

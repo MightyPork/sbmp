@@ -5,7 +5,8 @@
  * Paylod parser is used to extract values fron a byte buffer.
  *
  * It's a set of simple routines that help you extract data from
- * a SBMP datagram payload.
+ * a SBMP datagram payload. The payload parser should take care
+ *  of endianness of the SBMP encoding.
  *
  * The functions don't do any bounds checking, so be careful.
  */

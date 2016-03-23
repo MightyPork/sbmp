@@ -23,6 +23,6 @@ uint32_t pp_u32(PayloadParser *pp)
 
 uint8_t *pp_rest(PayloadParser *pp, size_t *length)
 {
-	*length = pp->len - pp->ptr;
+	if (length != NULL)	*length = pp->len - pp->ptr;
 	return pp->buf + pp->ptr; // pointer arith
 }
