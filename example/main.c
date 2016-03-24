@@ -8,7 +8,7 @@
  *
  * Finally some messages are sent and received to show that the
  * session layer is working.
- * 
+ *
  * This example is in the public domain.
  */
 
@@ -34,7 +34,7 @@ static SBMP_Endpoint *alice;
 static SBMP_Endpoint *bob;
 
 
-static void alice_40_listener(SBMP_Endpoint *ep, SBMP_Datagram *dg);
+static void alice_40_listener(SBMP_Endpoint *ep, SBMP_Datagram *dg, void **obj);
 
 int main(void)
 {
@@ -129,7 +129,7 @@ int main(void)
 
 		// this is the normal way to do it - would not work here. (see above)
 		sbmp_ep_send_message(alice, 40, (uint8_t*)msg, (uint16_t)strlen(msg), &sesn, NULL);
-		sbmp_ep_add_listener(alice, sesn, alice_40_listener);
+		sbmp_ep_add_listener(alice, sesn, alice_40_listener, NULL);
 
 	} else {
 		// this is how we do it here to avoid the above mentioned limitation
@@ -138,7 +138,7 @@ int main(void)
 
 		// first get the session number, and register the listener
 		sesn = sbmp_ep_new_session(alice);
-		sbmp_ep_add_listener(alice, sesn, alice_40_listener);
+		sbmp_ep_add_listener(alice, sesn, alice_40_listener, NULL);
 
 		// use the "response" function instead of "message" - they are the same apart from the session number handling
 		// "message" creates a new session nr and puts it in the provided pointer, "response" accepts it as an argument.
@@ -162,7 +162,7 @@ int main(void)
 // type "43" to reply data
 // type "44" to terminate the session
 
-static void alice_40_listener(SBMP_Endpoint *ep, SBMP_Datagram *dg)
+static void alice_40_listener(SBMP_Endpoint *ep, SBMP_Datagram *dg, void **obj)
 {
 	printf("ALICE received a message in session %d - type %d\n", dg->session, dg->type);
 
@@ -200,7 +200,7 @@ static void alice_40_listener(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 }
 
 
-static void bob_40_listener(SBMP_Endpoint *ep, SBMP_Datagram *dg)
+static void bob_40_listener(SBMP_Endpoint *ep, SBMP_Datagram *dg, void **obj)
 {
 	printf("BOB received a message in session %d - type %d\n", dg->session, dg->type);
 
@@ -258,7 +258,7 @@ static void bob_rx(SBMP_Datagram *dg)
 	// part of the listener example:
 	if (dg->type == 40) {
 		// alice wants to start a session
-		sbmp_ep_add_listener(bob, dg->session, bob_40_listener);
+		sbmp_ep_add_listener(bob, dg->session, bob_40_listener, NULL);
 
 		// TODO send reply, like 41 - indicate that we acknowledge the transfer
 	}

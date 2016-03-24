@@ -451,7 +451,7 @@ static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 			SBMP_SessionListenerSlot *slot = &ep->listeners[i];
 			if (slot->callback == NULL) continue; // skip unused
 			if (slot->session == dg->session) {
-				slot->callback(ep, dg); // call the listener
+				slot->callback(ep, dg, &slot->obj); // call the listener
 				return;
 			}
 		}
@@ -463,13 +463,14 @@ static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 
 // ---- Session listeners --------------------------------------------------------------
 
-bool FLASH_FN sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_SessionListener callback)
+bool FLASH_FN sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_SessionListener callback, void *obj)
 {
 	for (int i = 0; i < ep->listener_count; i++) {
 		SBMP_SessionListenerSlot *slot = &ep->listeners[i];
 		if (slot->callback != NULL) continue; // skip used slot
 		slot->session = session;
 		slot->callback = callback;
+		slot->obj = obj;
 		return true;
 	}
 	return false;
@@ -482,7 +483,23 @@ void FLASH_FN sbmp_ep_remove_listener(SBMP_Endpoint *ep, uint16_t session)
 		if (slot->callback == NULL) continue; // skip unused
 		if (slot->session == session) {
 			slot->callback = NULL; // mark unused
+			slot->obj = NULL;
 			return;
 		}
 	}
 }
+
+void FLASH_FN sbmp_ep_free_listener_obj(SBMP_Endpoint *ep, uint16_t session)
+{
+	for (int i = 0; i < ep->listener_count; i++) {
+		SBMP_SessionListenerSlot *slot = &ep->listeners[i];
+		if (slot->callback == NULL) continue; // skip unused
+		if (slot->session == session) {
+			if (slot->obj != NULL) {
+				free(slot->obj);
+			}
+			return;
+		}
+	}
+}
+
