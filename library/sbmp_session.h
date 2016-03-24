@@ -21,6 +21,7 @@
 #include "sbmp_config.h"
 #include "sbmp_datagram.h"
 #include "sbmp_frame.h"
+#include "payload_parser.h"
 
 /**
  * Handshake status
@@ -38,8 +39,10 @@ typedef struct SBMP_Endpoint_struct SBMP_Endpoint;
 
 /**
  * Session listener function.
+ *
+ * The obj var can be used to preseve state between calls, each listener has it's own.
  */
-typedef void (*SBMP_SessionListener)(SBMP_Endpoint *ep, SBMP_Datagram *dg);
+typedef void (*SBMP_SessionListener)(SBMP_Endpoint *ep, SBMP_Datagram *dg, void **obj);
 
 /**
  * Session listener slot.
@@ -48,9 +51,11 @@ typedef void (*SBMP_SessionListener)(SBMP_Endpoint *ep, SBMP_Datagram *dg);
  * declared in the header to allow static allocation.
  */
 typedef struct {
-	uint16_t session;
-	SBMP_SessionListener callback; // null = unused
+	uint16_t session;              /*!< The session this slot is listening to */
+	SBMP_SessionListener callback; /*!< Message handler func, null = the slot is unused */
+	void *obj;                     /*!< Opaque pointer to user data that can be used inside the listener. */
 } SBMP_SessionListenerSlot;
+
 
 /** SBMP Endpoint (session) structure */
 struct SBMP_Endpoint_struct {
@@ -174,7 +179,7 @@ bool sbmp_ep_send_u32(SBMP_Endpoint *ep, uint32_t word);
 static inline
 bool sbmp_ep_send_i8(SBMP_Endpoint *ep, int8_t byte)
 {
-	return sbmp_ep_send_u8(ep, *(uint8_t*)&byte);
+	return sbmp_ep_send_u8(ep, ((union pp8){.i8 = byte}).u8);
 }
 
 /** send char (just alias) */
@@ -188,21 +193,21 @@ bool sbmp_ep_send_char(SBMP_Endpoint *ep, int8_t byte)
 static inline
 bool sbmp_ep_send_i16(SBMP_Endpoint *ep, int16_t word)
 {
-	return sbmp_ep_send_u16(ep, *(uint16_t*)&word);
+	return sbmp_ep_send_u16(ep, ((union pp16){.i16 = word}).u16);
 }
 
 /** Send one 32-bit word in the current message */
 static inline
 bool sbmp_ep_send_i32(SBMP_Endpoint *ep, int32_t word)
 {
-	return sbmp_ep_send_u32(ep, *(uint32_t*)&word);
+	return sbmp_ep_send_u32(ep, ((union pp32){.i32 = word}).u32);
 }
 
 /** Send one float word in the current message */
 static inline
 bool sbmp_ep_send_float(SBMP_Endpoint *ep, float word)
 {
-	return sbmp_ep_send_u32(ep, *(uint32_t*)&word);
+	return sbmp_ep_send_u32(ep, ((union pp32){.f32 = word}).u32);
 }
 
 /**
@@ -310,16 +315,33 @@ void sbmp_ep_enable(SBMP_Endpoint *ep, bool enable)
 }
 
 /**
- * Add a session listener
+ * @brief Add a session listener
+ *
  * The listener will be used for all incoming messages with the given session nr.
  *
  * To unsubscribe, simply remove the listener (possible from within the callback)
  *
+ * @param ep       : the endpoint instance
+ * @param session  : session number
+ * @param callback : datagram handler function
+ * @param obj      : Opaque pointer to a data object for the listener.
+ *                   Can be used to tell the listener what kind of data is being received,
+ *                   if one listener is re-used for multiple transfers.
  * @return success (false if no free slot was found)
  */
-bool sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_SessionListener callback);
+bool sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_SessionListener callback, void *obj);
 
-/** Remove a session listener. */
+/**
+ * Remove a session listener.
+ * The caller is expected to free the
+ */
 void sbmp_ep_remove_listener(SBMP_Endpoint *ep, uint16_t session);
+
+/**
+ * Free the slot->obj that is used inside the listener callback.
+ * This is useful if the listener is removed outside the listener callback.
+ */
+void sbmp_ep_free_listener_obj(SBMP_Endpoint *ep, uint16_t session);
+
 
 #endif /* SBMP_SESSION_H */
