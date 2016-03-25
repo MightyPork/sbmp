@@ -41,7 +41,7 @@ bool FLASH_FN sbmp_dg_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16
 	}
 
 	if (frm->tx_status != FRM_STATE_IDLE) {
-		sbmp_error("Can't state datagram, SBMP tx not IDLE.");
+		sbmp_error("Can't start datagram, SBMP tx not IDLE.");
 		return false;
 	}
 
