@@ -1,37 +1,9 @@
 #ifndef SBMP_CONFIG_H
 #define SBMP_CONFIG_H
 
-/* --- Configuration ------------------- */
 
+/* ---------- CRC32 ---------------- */
 
-#ifndef SBMP_LOGGING
-/**
- * @brief Enable logging.
- *
- * Logging functions are WEAK stubs in sbmp_logging.
- *
- * Disable logging to free up memory taken by the messages.
- */
-#define SBMP_LOGGING 1
-#endif
-
-
-#ifndef SBMP_USE_MALLOC
-/**
- * @brief Enable malloc if NULL is passed.
- *
- * This lets you malloc() the struct / buffer if you pass NULL
- * to the init functions.
- *
- * Disable malloc to free up memory taken by the malloc routine.
- * If disabled, init funcs will return NULL if NULL is passed
- * as argument.
- */
-#define SBMP_USE_MALLOC 1
-#endif
-
-
-#ifndef SBMP_HAS_CRC32
 /**
  * @brief Add support for CRC32
  *
@@ -45,24 +17,49 @@
  * supported here, and should start using XOR.
  */
 #define SBMP_HAS_CRC32 1
-#endif
 
 
 /* ---------- MALLOC --------------- */
 
-#ifndef sbmp_malloc
-# define sbmp_malloc malloc
-#endif
+/**
+ * @brief Enable malloc if NULL is passed.
+ *
+ * This lets you malloc() the struct / buffer if you pass NULL
+ * to the init functions.
+ *
+ * Disable malloc to free up memory taken by the malloc routine.
+ * If disabled, init funcs will return NULL if NULL is passed
+ * as argument.
+ */
+#define SBMP_USE_MALLOC 1
 
-#ifndef sbmp_free
-# define sbmp_free free
-#endif
+// those will be used if malloc is enabled
+#define sbmp_malloc malloc
+#define sbmp_free   free
+#define sbmp_calloc calloc
 
-#ifndef sbmp_calloc
-# define sbmp_calloc calloc
-#endif
 
-/* ------------------------------------- */
+/* ---------- LOGGING -------------- */
+
+/**
+ * @brief Enable logging.
+ *
+ * Logging functions are WEAK stubs in sbmp_logging.
+ *
+ * Disable logging to free up memory taken by the messages.
+ */
+#define SBMP_LOGGING 1
+
+/**
+ * @brief Enable detailed logging (only for debugging, disable for better performance).
+ */
+#define SBMP_DEBUG 0
+
+// here are the actual logging functions
+#include <stdlib.h>
+#define sbmp_error(fmt, ...) (SBMP_DEBUG||SBMP_LOGGING ? printf("\x1b[31mSBMP][E] "fmt"\x1b[0m\n", ##__VA_ARGS__) : (void)fmt)
+#define sbmp_info(fmt, ...)  (SBMP_DEBUG||SBMP_LOGGING ? printf("\x1b[32;1m[SBMP][i] "fmt"\x1b[0m\n", ##__VA_ARGS__) : (void)fmt)
+#define sbmp_dbg(fmt, ...)   (SBMP_DEBUG  ? printf("[SBMP][ ] "fmt"\n", ##__VA_ARGS__) : (void)fmt)
 
 
 #endif // SBMP_CONFIG_H

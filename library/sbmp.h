@@ -13,7 +13,6 @@
 #include "sbmp_config.h"
 
 // Common utils & the frame parser
-#include "sbmp_logging.h"
 #include "sbmp_checksum.h"
 
 #include "sbmp_frame.h"

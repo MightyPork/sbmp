@@ -2,7 +2,6 @@
 #include <stdint.h>
 
 #include "sbmp_config.h"
-#include "sbmp_logging.h"
 #include "sbmp_datagram.h"
 #include "sbmp_session.h"
 #include "sbmp_bulk.h"
