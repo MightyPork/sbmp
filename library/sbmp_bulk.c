@@ -45,7 +45,7 @@ bool FLASH_FN sbmp_bulk_abort(SBMP_Endpoint *ep, uint16_t sesn)
 	// 0-byte response is just the header.
 	bool suc = sbmp_ep_start_response(ep, DG_BULK_ABORT, 0, sesn);
 
-	if (suc) sbmp_dbg("Bulk transfer aborted; sesn %"PRIu16, sesn);
+	if (suc) sbmp_dbg("Bulk transfer aborted; sesn %d", sesn);
 	return suc;
 }
 
