@@ -21,7 +21,7 @@ bool sbmp_bulk_offer(SBMP_Endpoint *ep, uint32_t bulk_length, const uint8_t *xtr
 /** Request a chunk of the bulk data. */
 bool sbmp_bulk_request(SBMP_Endpoint *ep, uint32_t offset, uint16_t chunk_size, uint16_t sesn)
 {
-	bool suc = sbmp_ep_start_response(ep, DG_BULK_OFFER, sizeof(uint32_t) + sizeof(uint16_t), sesn)
+	bool suc = sbmp_ep_start_response(ep, DG_BULK_REQUEST, sizeof(uint32_t) + sizeof(uint16_t), sesn)
 			   && sbmp_ep_send_u32(ep, offset)
 			   && sbmp_ep_send_u16(ep, chunk_size);
 
