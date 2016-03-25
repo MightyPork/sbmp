@@ -5,7 +5,6 @@
 #include "sbmp_session.h"
 #include "sbmp_bulk.h"
 
-
 /** Offer a bulk data transfer. */
 bool FLASH_FN sbmp_bulk_offer(SBMP_Endpoint *ep, uint32_t bulk_length, const uint8_t *xtra_data, uint16_t xtra_data_len, uint16_t sesn)
 {
@@ -13,7 +12,7 @@ bool FLASH_FN sbmp_bulk_offer(SBMP_Endpoint *ep, uint32_t bulk_length, const uin
 			   && sbmp_ep_send_u32(ep, bulk_length)
 			   && sbmp_ep_send_buffer(ep, xtra_data, xtra_data_len, NULL);
 
-	if (suc) sbmp_dbg("Bulk OFFER sent, len %d; sesn %d", bulk_length, sesn);
+	if (suc) sbmp_dbg("Bulk OFFER sent, len %"PRIu32"; sesn %"PRIu16, bulk_length, sesn);
 	return suc;
 }
 
@@ -24,7 +23,7 @@ bool FLASH_FN sbmp_bulk_request(SBMP_Endpoint *ep, uint32_t offset, uint16_t chu
 			   && sbmp_ep_send_u32(ep, offset)
 			   && sbmp_ep_send_u16(ep, chunk_size);
 
-	if (suc) sbmp_dbg("Bulk REQUEST sent, offs %d, chunk %d; sesn %d", offset, chunk_size, sesn);
+	if (suc) sbmp_dbg("Bulk REQUEST sent, offs %"PRIu32", chunk %"PRIu16"; sesn %"PRIu16, offset, chunk_size, sesn);
 	return suc;
 }
 
@@ -34,7 +33,7 @@ bool FLASH_FN sbmp_bulk_send_data(SBMP_Endpoint *ep, const uint8_t *chunk, uint1
 	bool suc = sbmp_ep_start_response(ep, DG_BULK_DATA, chunk_len, sesn)
 			   && sbmp_ep_send_buffer(ep, chunk, chunk_len, NULL);
 
-	if (suc) sbmp_dbg("Bulk DATA sent, len %d; sesn %d", chunk_len, sesn);
+	if (suc) sbmp_dbg("Bulk DATA sent, len %"PRIu16"; sesn %"PRIu16, chunk_len, sesn);
 	return suc;
 }
 
@@ -45,7 +44,7 @@ bool FLASH_FN sbmp_bulk_abort(SBMP_Endpoint *ep, uint16_t sesn)
 	// 0-byte response is just the header.
 	bool suc = sbmp_ep_start_response(ep, DG_BULK_ABORT, 0, sesn);
 
-	if (suc) sbmp_dbg("Bulk transfer aborted; sesn %d", sesn);
+	if (suc) sbmp_dbg("Bulk transfer aborted; sesn %"PRIu16, sesn);
 	return suc;
 }
 
