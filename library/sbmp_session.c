@@ -314,7 +314,7 @@ static void FLASH_FN parse_peer_hsk_buf(SBMP_Endpoint *ep, const uint8_t* buf)
 	ep->peer_pref_cksum = buf[0];
 	ep->peer_buffer_size = (uint16_t)(buf[1] | (buf[2] << 8));
 
-	sbmp_info("Handshake success, peer buf %"PRIu16", pref cksum %d",
+	sbmp_info("Handshake success, peer buf %d, pref cksum %d",
 			  ep->peer_buffer_size,
 			  ep->peer_pref_cksum);
 
