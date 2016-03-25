@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #include "sbmp_config.h"
 #include "sbmp_datagram.h"
@@ -14,7 +15,7 @@ bool sbmp_bulk_offer(SBMP_Endpoint *ep, uint32_t bulk_length, const uint8_t *xtr
 			   && sbmp_ep_send_u32(ep, bulk_length)
 			   && sbmp_ep_send_buffer(ep, xtra_data, xtra_data_len, NULL);
 
-	if (suc)sbmp_dbg("Bulk OFFER sent, len %d; sesn %d", bulk_length, sesn);
+	if (suc) sbmp_dbg("Bulk OFFER sent, len %"PRIu32"; sesn %"PRIu16, bulk_length, sesn);
 	return suc;
 }
 
@@ -25,7 +26,7 @@ bool sbmp_bulk_request(SBMP_Endpoint *ep, uint32_t offset, uint16_t chunk_size, 
 			   && sbmp_ep_send_u32(ep, offset)
 			   && sbmp_ep_send_u16(ep, chunk_size);
 
-	if (suc)sbmp_dbg("Bulk REQUEST sent, offs %d, chunk %d; sesn %d", offset, chunk_size, sesn);
+	if (suc) sbmp_dbg("Bulk REQUEST sent, offs %"PRIu32", chunk %"PRIu16"; sesn %"PRIu16, offset, chunk_size, sesn);
 	return suc;
 }
 
@@ -35,7 +36,7 @@ bool sbmp_bulk_send_data(SBMP_Endpoint *ep, const uint8_t *chunk, uint16_t chunk
 	bool suc = sbmp_ep_start_response(ep, DG_BULK_DATA, chunk_len, sesn)
 			   && sbmp_ep_send_buffer(ep, chunk, chunk_len, NULL);
 
-	if (suc)sbmp_dbg("Bulk DATA sent, len %d; sesn %d", chunk_len, sesn);
+	if (suc) sbmp_dbg("Bulk DATA sent, len %"PRIu16"; sesn %"PRIu16, chunk_len, sesn);
 	return suc;
 }
 
