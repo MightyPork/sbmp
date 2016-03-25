@@ -494,3 +494,15 @@ void sbmp_ep_free_listener_obj(SBMP_Endpoint *ep, uint16_t session)
 	}
 }
 
+void *sbmp_ep_get_listener_obj(SBMP_Endpoint *ep, uint16_t session)
+{
+	for (int i = 0; i < ep->listener_count; i++) {
+		SBMP_SessionListenerSlot *slot = &ep->listeners[i];
+		if (slot->callback == NULL) continue; // skip unused
+		if (slot->session == session) {
+			return slot->obj;
+		}
+	}
+
+	return NULL;
+}
