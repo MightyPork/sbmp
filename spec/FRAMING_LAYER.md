@@ -2,7 +2,7 @@
 
 <i>
 Simple Binary Messaging Protocol specification <br>
-rev. 1.4, 22 March 2016
+rev. 1.4, 26 March 2016
 </i>
 
 SBMP is designed for use on USART-based interfaces, such as simple TTL U(S)ART
