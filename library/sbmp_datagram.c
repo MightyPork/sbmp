@@ -13,10 +13,10 @@ SBMP_Datagram FLASH_FN *sbmp_dg_parse(SBMP_Datagram *dg, const uint8_t *payload,
 
 	// S.N. (2 B) | Dg Type (1 B) | Payload
 
-#if SBMP_MALLOC
+#if SBMP_USE_MALLOC
 	if (dg == NULL) {
 		// request to allocate
-		dg = malloc(sizeof(SBMP_Datagram));
+		dg = sbmp_malloc(sizeof(SBMP_Datagram));
 	}
 #else
 	if (dg == NULL) {

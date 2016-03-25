@@ -25,21 +25,27 @@ Configuration & porting
 
 You can customize a lot of aspects of SBMP in `sbmp_config.h`.
 
-If you included the library as a submodule, and want to avoid manual edits, you can set
-the options using compiler flags (eg. to disable CRC32: `-DSBMP_HAS_CRC32=0`).
+A template for this file is `sbmp_config.example.h`. Copy it to your project and make
+sure it's in the include path.
+
+You can also set some of the options using compiler flags (eg. to disable CRC32: 
+`-DSBMP_HAS_CRC32=0`).
 
 **What to change for Arduino**
 
 Basically disable all you can in the config file.
 
 - You don't want `malloc()`
-- Logging is useless if there's only one USART anyway
+- Logging is useless if there's only one USART anyway - disable logging
 - CRC32 can be replaced with XOR if you don't care about reliability that much.
 
 This gains you a huge size reduction, and the whole library will take only around
 2.5 kB flash and 150 B ram (of course, not including your Rx buffer).
 
 It works really well for ATmega328P - the usual Arduino chip.
+
+If you *need* CRC32 on AVR, you can optimize the CRC32 routines to use progmem - it's
+not there by default for better portability. 
 
 Example for AVR
 ---------------

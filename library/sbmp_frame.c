@@ -21,18 +21,18 @@ SBMP_FrmInst FLASH_FN *sbmp_frm_init(
 {
 	bool frm_mallocd = false;
 
-#if SBMP_MALLOC
+#if SBMP_USE_MALLOC
 
 	if (frm == NULL) {
 		// caller wants us to allocate it
-		frm = malloc(sizeof(SBMP_FrmInst));
+		frm = sbmp_malloc(sizeof(SBMP_FrmInst));
 		if (frm == NULL) return NULL; // malloc failed
 		frm_mallocd = true;
 	}
 
 	if (buffer == NULL) {
 		// caller wants us to allocate it
-		buffer = malloc(buffer_size);
+		buffer = sbmp_malloc(buffer_size);
 		if (buffer == NULL) { // malloc failed
 			if (frm_mallocd) free(frm);
 			return NULL;

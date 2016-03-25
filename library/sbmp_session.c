@@ -58,8 +58,8 @@ SBMP_Endpoint FLASH_FN *sbmp_ep_init(
 
 	if (ep == NULL) {
 		// request to allocate it
-#if SBMP_MALLOC
-		ep = malloc(sizeof(SBMP_Endpoint));
+#if SBMP_USE_MALLOC
+		ep = sbmp_malloc(sizeof(SBMP_Endpoint));
 		if (!ep) return NULL; // malloc failed
 		ep_mallocd = true;
 #else
@@ -105,8 +105,9 @@ bool FLASH_FN sbmp_ep_init_listeners(SBMP_Endpoint *ep, SBMP_SessionListenerSlot
 	// NULL is allowed only if count is 0
 	if (listener_slots == NULL && slot_count > 0) {
 		// request to allocate it
-#if SBMP_MALLOC
-		listener_slots = malloc(slot_count * sizeof(SBMP_SessionListenerSlot));
+#if SBMP_USE_MALLOC
+		listener_slots = sbmp_malloc(slot_count * sizeof(SBMP_SessionListenerSlot));
+
 		if (!listener_slots) { // malloc failed
 			return false;
 		}
