@@ -48,7 +48,7 @@ bool sbmp_dg_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16_t sessio
 
 	if (! sbmp_frm_start(frm, cksum_type, length + 3)) return false;
 
-	sbmp_dbg("Started a DG type %d, sesn %d", type, session);
+	sbmp_dbg("Started a DG type %"PRIu8", sesn %"PRIu16", len %"PRIu16, type, session, length);
 
 	sbmp_frm_send_byte(frm, session & 0xFF);
 	sbmp_frm_send_byte(frm, (session >> 8) & 0xFF);
