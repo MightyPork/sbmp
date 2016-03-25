@@ -331,11 +331,7 @@ static void FLASH_FN parse_peer_hsk_buf(SBMP_Endpoint *ep, const uint8_t* buf)
  */
 bool FLASH_FN sbmp_ep_start_handshake(SBMP_Endpoint *ep)
 {
-	if (ep->hsk_status == SBMP_HSK_AWAIT_REPLY) {
-		// busy now
-		sbmp_error("Can't start HSK, in progress already.");
-		return false;
-	}
+	sbmp_ep_abort_handshake(ep);
 
 	ep->hsk_status = 0;
 
