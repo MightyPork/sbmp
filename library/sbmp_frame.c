@@ -3,7 +3,6 @@
 #include <stdarg.h>
 
 #include "sbmp_config.h"
-#include "sbmp_logging.h"
 #include "sbmp_checksum.h"
 #include "sbmp_frame.h"
 

@@ -1,7 +1,6 @@
 #include "esp8266.h"
 
 #include "sbmp_config.h"
-#include "sbmp_logging.h"
 #include "sbmp_datagram.h"
 
 SBMP_Datagram FLASH_FN *sbmp_dg_parse(SBMP_Datagram *dg, const uint8_t *payload, uint16_t length)
@@ -47,6 +46,8 @@ bool FLASH_FN sbmp_dg_start(SBMP_FrmInst *frm, SBMP_CksumType cksum_type, uint16
 	}
 
 	if (! sbmp_frm_start(frm, cksum_type, length + 3)) return false;
+
+	sbmp_dbg("Started a DG type %d, sesn %d", type, session);
 
 	sbmp_frm_send_byte(frm, session & 0xFF);
 	sbmp_frm_send_byte(frm, (session >> 8) & 0xFF);
