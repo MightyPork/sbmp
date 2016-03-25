@@ -9,17 +9,17 @@
 
 
 /** Offer a bulk data transfer. */
-bool sbmp_bulk_offer(SBMP_Endpoint *ep, uint32_t bulk_length, const uint8_t *user_data, uint16_t user_data_len, uint16_t sesn)
+bool sbmp_bulk_offer(SBMP_Endpoint *ep, uint32_t bulk_length, const uint8_t *xtra_data, uint16_t xtra_data_len, uint16_t sesn)
 {
-	return sbmp_ep_start_response(ep, DG_BULK_OFFER, user_data_len + 4, sesn) // using response because it allows to use a custom sesn
+	return sbmp_ep_start_response(ep, DG_BULK_OFFER, xtra_data_len + sizeof(uint32_t), sesn) // using response because it allows to use a custom sesn
 		   && sbmp_ep_send_u32(ep, bulk_length)
-		   && sbmp_ep_send_buffer(ep, user_data, user_data_len, NULL);
+		   && sbmp_ep_send_buffer(ep, xtra_data, xtra_data_len, NULL);
 }
 
 /** Request a chunk of the bulk data. */
 bool sbmp_bulk_request(SBMP_Endpoint *ep, uint32_t offset, uint16_t chunk_size, uint16_t sesn)
 {
-	return sbmp_ep_start_response(ep, DG_BULK_OFFER, 4 + 2, sesn)
+	return sbmp_ep_start_response(ep, DG_BULK_OFFER, sizeof(uint32_t) + sizeof(uint16_t), sesn)
 		   && sbmp_ep_send_u32(ep, offset)
 		   && sbmp_ep_send_u16(ep, chunk_size);
 }

@@ -16,7 +16,7 @@
 #endif
 
 
-#ifndef SBMP_MALLOC
+#ifndef SBMP_USE_MALLOC
 /**
  * @brief Enable malloc if NULL is passed.
  *
@@ -27,7 +27,7 @@
  * If disabled, init funcs will return NULL if NULL is passed
  * as argument.
  */
-#define SBMP_MALLOC 1
+#define SBMP_USE_MALLOC 1
 #endif
 
 
@@ -45,6 +45,21 @@
  * supported here, and should start using XOR.
  */
 #define SBMP_HAS_CRC32 1
+#endif
+
+
+/* ---------- MALLOC --------------- */
+
+#ifndef sbmp_malloc
+# define sbmp_malloc malloc
+#endif
+
+#ifndef sbmp_free
+# define sbmp_free free
+#endif
+
+#ifndef sbmp_calloc
+# define sbmp_calloc calloc
 #endif
 
 /* ------------------------------------- */

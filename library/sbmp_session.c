@@ -58,8 +58,8 @@ SBMP_Endpoint *sbmp_ep_init(
 
 	if (ep == NULL) {
 		// request to allocate it
-#if SBMP_MALLOC
-		ep = malloc(sizeof(SBMP_Endpoint));
+#if SBMP_USE_MALLOC
+		ep = sbmp_malloc(sizeof(SBMP_Endpoint));
 		if (!ep) return NULL; // malloc failed
 		ep_mallocd = true;
 #else
@@ -105,9 +105,9 @@ bool sbmp_ep_init_listeners(SBMP_Endpoint *ep, SBMP_SessionListenerSlot *listene
 	// NULL is allowed only if count is 0
 	if (listener_slots == NULL && slot_count > 0) {
 		// request to allocate it
-#if SBMP_MALLOC
+#if SBMP_USE_MALLOC
 		// calloc -> make sure all listeners are NULL = unused
-		listener_slots = calloc(slot_count, sizeof(SBMP_SessionListenerSlot));
+		listener_slots = sbmp_calloc(slot_count, sizeof(SBMP_SessionListenerSlot));
 		if (!listener_slots) { // malloc failed
 			return false;
 		}
