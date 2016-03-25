@@ -56,10 +56,11 @@
 #define SBMP_DEBUG 0
 
 // here are the actual logging functions
-#include <stdlib.h>
-#define sbmp_error(fmt, ...) (SBMP_DEBUG||SBMP_LOGGING ? printf("\x1b[31mSBMP][E] "fmt"\x1b[0m\n", ##__VA_ARGS__) : (void)fmt)
-#define sbmp_info(fmt, ...)  (SBMP_DEBUG||SBMP_LOGGING ? printf("\x1b[32;1m[SBMP][i] "fmt"\x1b[0m\n", ##__VA_ARGS__) : (void)fmt)
-#define sbmp_dbg(fmt, ...)   (SBMP_DEBUG  ? printf("[SBMP][ ] "fmt"\n", ##__VA_ARGS__) : (void)fmt)
+#include <stdio.h>
+#define sbmp_error(fmt, ...) (SBMP_DEBUG||SBMP_LOGGING ? printf("\x1b[31;1m[SBMP][E] "fmt"\x1b[0m\n", ##__VA_ARGS__) : 0)
+#define sbmp_warn(fmt, ...)  (SBMP_DEBUG||SBMP_LOGGING ? printf("\x1b[33;1m[SBMP][E] "fmt"\x1b[0m\n", ##__VA_ARGS__) : 0)
+#define sbmp_info(fmt, ...)  (SBMP_DEBUG||SBMP_LOGGING ? printf("\x1b[32m[SBMP][i] "fmt"\x1b[0m\n", ##__VA_ARGS__) : 0)
+#define sbmp_dbg(fmt, ...)   (SBMP_DEBUG  ? printf("[SBMP][ ] "fmt"\n", ##__VA_ARGS__) : 0)
 
 
 #endif // SBMP_CONFIG_H

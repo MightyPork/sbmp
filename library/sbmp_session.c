@@ -27,6 +27,8 @@ static void ep_rx_handler(uint8_t *buf, uint16_t len, void *token)
 	if (NULL != sbmp_dg_parse(&ep->static_dg, buf, len)) {
 		// payload parsed OK
 
+		sbmp_dbg("Received datagram type %d, sesn %d", ep->static_dg.type, ep->static_dg.session);
+
 		// check if handshake datagram, else call user callback.
 		handle_hsk_datagram(ep, &ep->static_dg);
 	}
@@ -308,13 +310,13 @@ static void parse_peer_hsk_buf(SBMP_Endpoint *ep, const uint8_t* buf)
 	ep->peer_pref_cksum = buf[0];
 	ep->peer_buffer_size = (uint16_t)(buf[1] | (buf[2] << 8));
 
-	sbmp_info("HSK success, peer buf %"PRIu16", pref cksum %d",
+	sbmp_info("Handshake success, peer buf %"PRIu16", pref cksum %d",
 			  ep->peer_buffer_size,
 			  ep->peer_pref_cksum);
 
 	// check if checksum available
 	if (ep->peer_pref_cksum == SBMP_CKSUM_CRC32 && !SBMP_HAS_CRC32) {
-		sbmp_error("CRC32 not avail, using XOR as peer's pref cksum.");
+		sbmp_warn("CRC32 not avail, using XOR as peer's pref cksum.");
 		ep->peer_pref_cksum = SBMP_CKSUM_XOR;
 	}
 }
@@ -335,7 +337,10 @@ bool sbmp_ep_start_handshake(SBMP_Endpoint *ep)
 	bool suc = sbmp_ep_send_message(ep, DG_HANDSHAKE_START, buf, 3, &ep->hsk_session, NULL);
 
 	if (!suc) {
+		sbmp_error("Failed to start handshake.");
 		ep->hsk_status = SBMP_HSK_IDLE;
+	} else {
+		sbmp_dbg("Handskahe request sent.");
 	}
 
 	return suc;
@@ -350,8 +355,11 @@ SBMP_HandshakeStatus sbmp_ep_handshake_status(SBMP_Endpoint *ep)
 /** Abort current handshake & discard hsk session */
 void sbmp_ep_abort_handshake(SBMP_Endpoint *ep)
 {
-	ep->hsk_session = 0;
-	ep->hsk_status = SBMP_HSK_IDLE;
+	if (ep->hsk_status == SBMP_HSK_AWAIT_REPLY) {
+		ep->hsk_session = 0;
+		ep->hsk_status = SBMP_HSK_IDLE;
+		sbmp_dbg("Handshake aborted.");
+	}
 }
 
 /**
@@ -377,14 +385,14 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 
 		if (hsk_start) {
 			// peer requests origin
-			sbmp_info("Rx HSK request");
+			sbmp_info("Incoming handshake request");
 
 			if (ep->hsk_status == SBMP_HSK_AWAIT_REPLY) {
 				// conflict occured - we're already waiting for a reply.
 				sbmp_ep_send_response(ep, DG_HANDSHAKE_CONFLICT, our_info_pld, HSK_PAYLOAD_LEN, dg->session, NULL);
 				ep->hsk_status = SBMP_HSK_CONFLICT;
 
-				sbmp_error("HSK conflict");
+				sbmp_error("Handshake conflict!");
 			} else {
 				// we're idle, accept the request.
 				bool peer_origin = SESSION2ORIGIN(dg->session);
@@ -402,11 +410,11 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 			}
 		} else if (hsk_accept) {
 			// peer accepted our request
-			sbmp_info("Rx HSK accept");
+			sbmp_info("Handshake accepted by peer");
 
 			if (ep->hsk_status != SBMP_HSK_AWAIT_REPLY || ep->hsk_session != dg->session) {
 				// but we didn't send any request
-				sbmp_error("Rx unexpected HSK accept, ignoring.");
+				sbmp_error("Unexpected hsk accept msg, ignoring.");
 
 			} else {
 				// OK, we were waiting for this reply
@@ -420,11 +428,11 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 			}
 		} else if (hsk_conflict) {
 			// peer rejected our request due to conflict
-			sbmp_info("Rx HSK conflict");
+			sbmp_info("Handshake conflict msg received");
 
 			if (ep->hsk_status != SBMP_HSK_AWAIT_REPLY || ep->hsk_session != dg->session) {
 				// but we didn't send any request
-				sbmp_error("Rx unexpected HSK conflict, ignoring.");
+				sbmp_error("Unexpected hsk conflict msg, ignoring.");
 			} else {
 				// Acknowledge the conflict
 
@@ -446,6 +454,8 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 			}
 		}
 
+		sbmp_dbg("No listener for sesn %d, using default handler.", dg->session);
+
 		// if no listener consumed it, call the default handler
 		ep->rx_handler(dg);
 	}
@@ -455,14 +465,23 @@ static void handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 
 bool sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_SessionListener callback, void *obj)
 {
+	if (ep->listener_count == 0) {
+		sbmp_error("Can't add session listener, listeners not initialized!");
+		return false;
+	}
+
 	for (int i = 0; i < ep->listener_count; i++) {
 		SBMP_SessionListenerSlot *slot = &ep->listeners[i];
 		if (slot->callback != NULL) continue; // skip used slot
 		slot->session = session;
 		slot->callback = callback;
 		slot->obj = obj;
+
+		sbmp_dbg("Added listener for session %d", session);
 		return true;
 	}
+
+	sbmp_error("Failed to add session listener.");
 	return false;
 }
 
@@ -474,9 +493,13 @@ void sbmp_ep_remove_listener(SBMP_Endpoint *ep, uint16_t session)
 		if (slot->session == session) {
 			slot->callback = NULL; // mark unused
 			slot->obj = NULL;
+
+			sbmp_dbg("Removed a listener for session %d", session);
 			return;
 		}
 	}
+
+	sbmp_warn("No listener to remove for session %d", session);
 }
 
 void sbmp_ep_free_listener_obj(SBMP_Endpoint *ep, uint16_t session)
@@ -491,6 +514,8 @@ void sbmp_ep_free_listener_obj(SBMP_Endpoint *ep, uint16_t session)
 			return;
 		}
 	}
+
+	sbmp_warn("No such listener: sesn %d, cannot free obj", session);
 }
 
 void *sbmp_ep_get_listener_obj(SBMP_Endpoint *ep, uint16_t session)
@@ -503,5 +528,6 @@ void *sbmp_ep_get_listener_obj(SBMP_Endpoint *ep, uint16_t session)
 		}
 	}
 
+	sbmp_warn("No such listener: sesn %d, cannot get obj", session);
 	return NULL;
 }
