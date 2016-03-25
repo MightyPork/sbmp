@@ -34,7 +34,8 @@ bool sbmp_bulk_request(SBMP_Endpoint *ep, uint32_t offset, uint16_t chunk_size, 
 /**
  * @brief Send a chunk of data as requested.
  *
- * NOTE: If needed, you can also simply start the response and send the data byte-by-byte
+ * @note
+ * If needed, you can also simply start the response and send the data byte-by-byte
  * or in 32-bit chunks or whatever suits your needs best.
  *
  * There is no need to close the datagram, it's closed automatically with the last byte.

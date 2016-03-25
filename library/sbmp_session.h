@@ -338,8 +338,16 @@ void sbmp_ep_remove_listener(SBMP_Endpoint *ep, uint16_t session);
 /**
  * Free the slot->obj that is used inside the listener callback.
  * This is useful if the listener is removed outside the listener callback.
+ *
+ * @note
+ * Use sbmp_ep_get_listener_obj() and free manually if nested malloc'd objects are present.
  */
 void sbmp_ep_free_listener_obj(SBMP_Endpoint *ep, uint16_t session);
 
+/**
+ * Get the listener state object.
+ * Useful if it contains nested malloc'd objects that have to be freed.
+ */
+void *sbmp_ep_get_listener_obj(SBMP_Endpoint *ep, uint16_t session);
 
 #endif /* SBMP_SESSION_H */
