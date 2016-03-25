@@ -27,7 +27,7 @@ static void FLASH_FN ep_rx_handler(uint8_t *buf, uint16_t len, void *token)
 	if (NULL != sbmp_dg_parse(&ep->static_dg, buf, len)) {
 		// payload parsed OK
 
-		sbmp_dbg("Received datagram type %d, sesn %d", ep->static_dg.type, ep->static_dg.session);
+		sbmp_dbg("Received datagram type %"PRIu8", sesn %"PRIu16", len %"PRIu16, ep->static_dg.type, ep->static_dg.session, len);
 
 		// check if handshake datagram, else call user callback.
 		handle_hsk_datagram(ep, &ep->static_dg);
@@ -460,7 +460,7 @@ static void FLASH_FN handle_hsk_datagram(SBMP_Endpoint *ep, SBMP_Datagram *dg)
 			}
 		}
 
-		sbmp_dbg("No listener for sesn %d, using default handler.", dg->session);
+		sbmp_dbg("No listener for sesn %"PRIu16", using default handler.", dg->session);
 
 		// if no listener consumed it, call the default handler
 		ep->rx_handler(dg);
@@ -483,7 +483,7 @@ bool FLASH_FN sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_Ses
 		slot->callback = callback;
 		slot->obj = obj;
 
-		sbmp_dbg("Added listener for session %d", session);
+		sbmp_dbg("Added listener for session %"PRIu16, session);
 		return true;
 	}
 
@@ -500,12 +500,12 @@ void FLASH_FN sbmp_ep_remove_listener(SBMP_Endpoint *ep, uint16_t session)
 			slot->callback = NULL; // mark unused
 			slot->obj = NULL;
 
-			sbmp_dbg("Removed a listener for session %d", session);
+			sbmp_dbg("Removed a listener for session %"PRIu16, session);
 			return;
 		}
 	}
 
-	sbmp_warn("No listener to remove for session %d", session);
+	sbmp_warn("No listener to remove for session %"PRIu16, session);
 }
 
 void FLASH_FN sbmp_ep_free_listener_obj(SBMP_Endpoint *ep, uint16_t session)
