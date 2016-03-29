@@ -23,5 +23,6 @@
 #include "sbmp_bulk.h"
 
 #include "payload_parser.h"
+#include "payload_builder.h"
 
 #endif /* SBMP_H */

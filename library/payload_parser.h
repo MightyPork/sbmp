@@ -6,13 +6,15 @@
  *
  * It's a set of simple routines that help you extract data from
  * a SBMP datagram payload. The payload parser should take care
- *  of endianness of the SBMP encoding.
+ * of endianness of the SBMP encoding.
  *
- * The functions don't do any bounds checking, so be careful.
+ * The parser functions will print an error if you reach the end of data,
+ * and return zero. This can help you with debugging.
  */
 
 #include <stdint.h>
 #include <stddef.h>
+#include "type_coerce.h"
 
 typedef struct {
 	const uint8_t *buf;
@@ -21,30 +23,13 @@ typedef struct {
 } PayloadParser;
 
 
-// Structs for conversion between types
-
-union pp8 {
-	uint8_t u8;
-	int8_t i8;
-};
-
-union pp16 {
-	uint16_t u16;
-	int16_t i16;
-};
-
-union pp32 {
-	uint32_t u32;
-	int32_t i32;
-	float f32;
-};
-
-
 /** Start the parser. This is assigned to a local variable. */
-#define pp_start(buffer, length) ((PayloadParser){.buf = (buffer), .ptr = 0, .len = (length)})
+#define pp_start(buffer, length) ((PayloadParser){buffer, 0, length})
 
 /**
  * @brief Get the remainder of the buffer.
+ *
+ * Returns NULL and sets 'length' to 0 if there are no bytes left.
  *
  * @param pp
  * @param length : here the buffer length will be stored. NULL to do not store.

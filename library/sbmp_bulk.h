@@ -13,13 +13,13 @@
 /**
  * @brief Offer a bulk data transfer.
  * @param ep
- * @param bulk_length : total bulk data length
+ * @param bulk_len_bytes : total bulk data length
  * @param xtra        : extra data in the datagram
  * @param xtra_len    : extra data length
  * @param sesn        : session number to use
  * @return send success
  */
-bool sbmp_bulk_offer(SBMP_Endpoint *ep, uint32_t bulk_length, const uint8_t *xtra, uint16_t xtra_len, uint16_t sesn);
+bool sbmp_bulk_offer(SBMP_Endpoint *ep, uint32_t bulk_len_bytes, const uint8_t *xtra, uint16_t xtra_len, uint16_t sesn);
 
 /**
  * @brief Request a chunk of the bulk data.
