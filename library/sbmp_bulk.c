@@ -6,13 +6,13 @@
 #include "sbmp_bulk.h"
 
 /** Offer a bulk data transfer. */
-bool FLASH_FN sbmp_bulk_offer(SBMP_Endpoint *ep, uint32_t bulk_length, const uint8_t *xtra_data, uint16_t xtra_data_len, uint16_t sesn)
+bool FLASH_FN sbmp_bulk_offer(SBMP_Endpoint *ep, uint32_t bulk_len_bytes, const uint8_t *xtra_data, uint16_t xtra_data_len, uint16_t sesn)
 {
 	bool suc = sbmp_ep_start_response(ep, DG_BULK_OFFER, xtra_data_len + sizeof(uint32_t), sesn) // using response because it allows to use a custom sesn
-			   && sbmp_ep_send_u32(ep, bulk_length)
+			   && sbmp_ep_send_u32(ep, bulk_len_bytes)
 			   && sbmp_ep_send_buffer(ep, xtra_data, xtra_data_len, NULL);
 
-	if (suc) sbmp_dbg("Bulk OFFER sent, len %"PRIu32"; sesn %"PRIu16, bulk_length, sesn);
+	if (suc) sbmp_dbg("Bulk OFFER sent, len %"PRIu32"; sesn %"PRIu16, bulk_len_bytes, sesn);
 	return suc;
 }
 

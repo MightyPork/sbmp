@@ -177,7 +177,7 @@ bool sbmp_ep_send_u32(SBMP_Endpoint *ep, uint32_t word);
 static inline
 bool sbmp_ep_send_i8(SBMP_Endpoint *ep, int8_t byte)
 {
-	return sbmp_ep_send_u8(ep, ((union pp8){.i8 = byte}).u8);
+	return sbmp_ep_send_u8(ep, ((union conv8){.i8 = byte}).u8);
 }
 
 /** send char (just alias) */
@@ -191,21 +191,21 @@ bool sbmp_ep_send_char(SBMP_Endpoint *ep, int8_t byte)
 static inline
 bool sbmp_ep_send_i16(SBMP_Endpoint *ep, int16_t word)
 {
-	return sbmp_ep_send_u16(ep, ((union pp16){.i16 = word}).u16);
+	return sbmp_ep_send_u16(ep, ((union conv16){.i16 = word}).u16);
 }
 
 /** Send one 32-bit word in the current message */
 static inline
 bool sbmp_ep_send_i32(SBMP_Endpoint *ep, int32_t word)
 {
-	return sbmp_ep_send_u32(ep, ((union pp32){.i32 = word}).u32);
+	return sbmp_ep_send_u32(ep, ((union conv32){.i32 = word}).u32);
 }
 
 /** Send one float word in the current message */
 static inline
 bool sbmp_ep_send_float(SBMP_Endpoint *ep, float word)
 {
-	return sbmp_ep_send_u32(ep, ((union pp32){.f32 = word}).u32);
+	return sbmp_ep_send_u32(ep, ((union conv32){.f32 = word}).u32);
 }
 
 /**
