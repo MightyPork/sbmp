@@ -125,6 +125,8 @@ bool FLASH_FN sbmp_ep_init_listeners(SBMP_Endpoint *ep, SBMP_SessionListenerSlot
 	ep->listeners = listener_slots;
 	ep->listener_count = slot_count;
 
+	sbmp_dbg("Initialized %"PRIu16" session listener slots.", slot_count);
+
 	return true;
 }
 
@@ -487,7 +489,8 @@ bool FLASH_FN sbmp_ep_add_listener(SBMP_Endpoint *ep, uint16_t session, SBMP_Ses
 		return true;
 	}
 
-	sbmp_error("Failed to add session listener.");
+	sbmp_error("Failed to add session listener - all full?");
+
 	return false;
 }
 

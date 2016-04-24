@@ -2,7 +2,7 @@
 
 <i>
 Simple Binary Messaging Protocol specification <br>
-rev. 1.4, 26 March 2016
+rev. 1.5, 24 April 2016
 </i>
 
 ## Datagram types
@@ -11,9 +11,9 @@ rev. 1.4, 26 March 2016
 
 | Datagram type | Description
 | ------------- | -----------
-| 0x00          | Handshake request
-| 0x01          | Handshake confirmation (origin request accepted)
-| 0x02          | Handshake conflict
+| 0             | Handshake request
+| 1             | Handshake confirmation (origin request accepted)
+| 2             | Handshake conflict
 
 The handshake payload structure is specified in
 [SESSION_LAYER.md](SESSION_LAYER.md).
@@ -48,10 +48,10 @@ It's recommended to use the "session listener" feature of the reference library
 
 | Datagram type | Description
 | ------------- | -----------
-| 0x04          | Bulk transfer offer
-| 0x05          | Bulk transfer data request
-| 0x06          | Bulk transfer data payload
-| 0x07          | Bulk transfer abort
+| 4             | Bulk transfer offer
+| 5             | Bulk transfer data request
+| 6             | Bulk transfer data payload
+| 7             | Bulk transfer abort
 
 
 #### 0x04 - Bulk transfer offer
@@ -130,12 +130,25 @@ Examples when this datagram is used:
 This datagram has no data payload.
 
 
+### Generic messages
+
+Those datagrams can be used as a generic response to user datagrams.
+
+The payload is undefined; in the case of FAILURE and BUSY, they can hold ASCII error message.
+
+| Datagram type | Description
+| ------------- | -----------
+| 10            | SUCCESS
+| 11            | FAILURE
+| 12            | BUSY (can mean device is busy processing another request)
+
+
 ### User datagrams
 
 Other numbers are free to be used by the application.
 
-To avoid possible conflict with a future version of this spec, it's recommended to preferably
-use numbers >= 100 for user payloads.
+To avoid possible conflict with a future version of this spec, it's recommended to use 
+numbers >= 100 for user payloads.
 
 
 ## Data encoding

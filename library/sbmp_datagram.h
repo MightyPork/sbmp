@@ -19,18 +19,20 @@
 typedef uint8_t SBMP_DgType;
 
 // Hand-shake
-#define DG_HANDSHAKE_START    0x00
-#define DG_HANDSHAKE_ACCEPT   0x01
-#define DG_HANDSHAKE_CONFLICT 0x02
-
-// DG type 0x03 currently unused
-//#define DG_ 0x03
+#define DG_HANDSHAKE_START    0
+#define DG_HANDSHAKE_ACCEPT   1
+#define DG_HANDSHAKE_CONFLICT 2
 
 // Bulk data transfer
-#define DG_BULK_OFFER 0x04
-#define DG_BULK_REQUEST 0x05
-#define DG_BULK_DATA 0x06
-#define DG_BULK_ABORT 0x07
+#define DG_BULK_OFFER   4
+#define DG_BULK_REQUEST 5
+#define DG_BULK_DATA    6
+#define DG_BULK_ABORT   7
+
+// generic status codes
+#define DG_SUCCESS 10
+#define DG_FAILURE 11
+#define DG_BUSY    12
 
 
 /**
