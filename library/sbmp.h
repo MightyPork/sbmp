@@ -8,7 +8,7 @@
  * #include in your application code.
  */
 
-#define SBMP_VER "1.4"
+#define SBMP_VER "1.5"
 
 #include "sbmp_config.h"
 

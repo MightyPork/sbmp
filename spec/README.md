@@ -2,7 +2,7 @@
 
 <i>
 Simple Binary Messaging Protocol specification <br>
-rev. 1.4, 26 March 2016
+rev. 1.5, 24 April 2016
 </i>
 
 ## Conventions
