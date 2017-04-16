@@ -1,5 +1,10 @@
 # Simple Binary Messaging Protocol
 
+> **This protocol is obsolete!**
+>
+> A better implementation - cleaner, less convoluted 
+> and more configurable is now available at [MightyPork/TinyFrame](https://github.com/MightyPork/TinyFrame)!
+
 ## Introduction
 
 SBMP is an extensible, versatile protocol for point-to-point communication
